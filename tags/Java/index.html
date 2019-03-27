@@ -13,9 +13,9 @@
 <head><meta name="generator" content="Hexo 3.8.0">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <meta name="author" content="John Doe">
+    <meta name="author" content="Li linfeng">
     <meta name="renderer" content="webkit">
-    <meta name="copyright" content="John Doe">
+    <meta name="copyright" content="Li linfeng">
     
     <meta name="keywords" content="hexo,hexo-theme,hexo-blog">
     
@@ -346,27 +346,30 @@
     
     
     <article class="index-post">
-        <a class="abstract-title" href="/2019/03/26/测试测试TEST/">
+        <a class="abstract-title" href="/2019/03/27/Java反序列化漏洞解析/">
             
-                <span>测试测试TEST</span>
+                <span>Java反序列化漏洞解析</span>
         </a>
         <div class="abstract-content">
-            期待你的归来，对不对嘛！好久不见哟。。。
-还好啦
-
+            背景知识从概念上讲，序列化是将对象的状态信息转换成可存储或可传输的状态。在这个过程中，对象将其状态写入到临时或持久性存储区中。
+通俗地讲，就是为了方便程序读写对象，而将它存储到网络套接字或文件中。序列化后的对象以某种特定格式存在。反序列化的过程则相反，将序列化后的数据重新整合成对象。
+1.1 序列化常见的主流编程语言都支持序列化与反序列化。这里以Java为例，这两个过程如下图：
+12345678910111213141516171819202122232425@AllArgsConstructor@Setter@Getter// 本例中Test类对象可被序列化后存入文件，并通过反序列化重...
         </div>
         <div class="abstract-post-meta">
             <!-- date  -->
             <div class="abstract-date">
-                <span class="abstract-calander iconfont-archer">&#xe676;</span><span class="abstract-time">2019/03/26</span>
+                <span class="abstract-calander iconfont-archer">&#xe676;</span><span class="abstract-time">2019/03/27</span>
             </div>
             <!-- tags  -->
             
             <div class="abstract-tags">
     
-        <a class="post-tag" href="javascript:void(0);" data-tags="Test">Test</a>
+        <a class="post-tag" href="javascript:void(0);" data-tags="Java">Java</a>
     
-        <a class="post-tag" href="javascript:void(0);" data-tags="Security Research">Security Research</a>
+        <a class="post-tag" href="javascript:void(0);" data-tags="RCE">RCE</a>
+    
+        <a class="post-tag" href="javascript:void(0);" data-tags="反序列化">反序列化</a>
     
 </div>
             
@@ -510,7 +513,7 @@
     
     
         <li class="archive-post-item">
-            <span class="archive-post-date">03/26</span><a class="archive-post-title" href="/2019/03/26/测试测试TEST/">测试测试TEST</a>
+            <span class="archive-post-date">03/27</span><a class="archive-post-title" href="/2019/03/27/Java反序列化漏洞解析/">Java反序列化漏洞解析</a>
         </li>
     
     
@@ -522,6 +525,12 @@
   </div>
         <div class="sidebar-panel-tags">
     <div class="sidebar-tags-name">
+    
+        <span class="sidebar-tag-name" data-tags="Java"><span class="iconfont-archer">&#xe606;</span>Java</span>
+    
+        <span class="sidebar-tag-name" data-tags="RCE"><span class="iconfont-archer">&#xe606;</span>RCE</span>
+    
+        <span class="sidebar-tag-name" data-tags="反序列化"><span class="iconfont-archer">&#xe606;</span>反序列化</span>
     
         <span class="sidebar-tag-name" data-tags="Test"><span class="iconfont-archer">&#xe606;</span>Test</span>
     
@@ -560,6 +569,8 @@ jsonContent:
         <div class="sidebar-panel-categories">
     <div class="sidebar-categories-name">
     
+        <span class="sidebar-category-name" data-categories="漏洞分析"><span class="iconfont-archer">&#xe60a;</span>漏洞分析</span>
+    
     </div>
     <div class="iconfont-archer sidebar-categories-empty">&#xe678;</div>
     <div class="sidebar-categories-list"></div>
@@ -569,7 +580,7 @@ jsonContent:
     <script>
     var siteMeta = {
         root: "/",
-        author: "John Doe"
+        author: "Li linfeng"
     }
 </script>
     <!-- CDN failover -->
