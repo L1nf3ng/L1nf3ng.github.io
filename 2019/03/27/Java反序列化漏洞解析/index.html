@@ -519,9 +519,11 @@ height:50vh;
 <h3 id="方法论"><a href="#方法论" class="headerlink" title="方法论"></a>方法论</h3><p>挖掘Java反序列化漏洞的步骤大致如下（没错，这段是抄来的）：</p>
 <blockquote>
 <p>(1)确定反序列化输入点</p>
-<p>　首先应找出readObject方法调用，在找到之后进行下一步的注入操作。一般可以通过以下方法进行查找：</p>
-<p>　　　1)源码审计：寻找可以利用的“靶点”，即确定调用反序列化函数readObject的调用地点。</p>
-<p>　　    2)对该应用进行网络行为抓包，寻找序列化数据，如wireshark、tcpdump等</p>
+<p>首先应找出readObject方法调用，在找到之后进行下一步的注入操作。一般可以通过以下方法进行查找：</p>
+<ul>
+<li>源码审计：寻找可以利用的“靶点”，即确定调用反序列化函数readObject的调用地点。</li>
+<li>对该应用进行网络行为抓包，寻找序列化数据，如wireshark、tcpdump等</li>
+</ul>
 <p>　注： java序列化的数据一般会以标记（<code>ac ed 00 05</code>）开头，base64编码后的特征为<code>rO0AB</code>。</p>
 <p>(2)再考察应用的Class Path中是否包含Apache Commons Collections库</p>
 <p>(3)生成反序列化的payload</p>
@@ -548,13 +550,18 @@ height:50vh;
             <p>原文作者：<a href="https://l1nf3ng.github.io">Li linfeng</a>
             </p><p>原文链接：<a href="https://l1nf3ng.github.io/2019/03/27/Java反序列化漏洞解析/">https://l1nf3ng.github.io/2019/03/27/Java反序列化漏洞解析/</a>
             </p><p>发表日期：<a href="https://l1nf3ng.github.io/2019/03/27/Java反序列化漏洞解析/">March 27th 2019, 11:19:27 am</a>
-            </p><p>更新日期：<a href="https://l1nf3ng.github.io/2019/03/27/Java反序列化漏洞解析/">March 28th 2019, 8:02:25 pm</a>
+            </p><p>更新日期：<a href="https://l1nf3ng.github.io/2019/03/27/Java反序列化漏洞解析/">April 1st 2019, 6:02:35 pm</a>
             </p><p>版权声明：本文采用<a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">知识共享署名-非商业性使用 4.0 国际许可协议</a>进行许可</p>
         </div>
     
     <!-- paginator  -->
     <ul class="post-paginator">
         <li class="next">
+            
+                <div class="nextSlogan">Next Post</div>
+                <a href="/2019/04/01/Windows特权文件的操作滥用/" title="Windows特权文件的操作滥用">
+                    <div class="nextTitle">Windows特权文件的操作滥用</div>
+                </a>
             
         </li>
         <li class="previous">
@@ -715,9 +722,18 @@ top:50vh;
     
     
     
+    
+    
+    
+    
+    
+    
+    
+    
+    
     <div class="total-and-search">
         <div class="total-archive">
-        Total : 2
+        Total : 3
         </div>
         <!-- search  -->
         
@@ -733,6 +749,11 @@ top:50vh;
     
     
         <li class="archive-post-item">
+            <span class="archive-post-date">04/01</span><a class="archive-post-title" href="/2019/04/01/Windows特权文件的操作滥用/">Windows特权文件的操作滥用</a>
+        </li>
+    
+    
+        <li class="archive-post-item">
             <span class="archive-post-date">03/27</span><a class="archive-post-title" href="/2019/03/27/Java反序列化漏洞解析/">Java反序列化漏洞解析</a>
         </li>
     
@@ -745,6 +766,10 @@ top:50vh;
   </div>
         <div class="sidebar-panel-tags">
     <div class="sidebar-tags-name">
+    
+        <span class="sidebar-tag-name" data-tags="本地提权"><span class="iconfont-archer">&#xe606;</span>本地提权</span>
+    
+        <span class="sidebar-tag-name" data-tags="Windows"><span class="iconfont-archer">&#xe606;</span>Windows</span>
     
         <span class="sidebar-tag-name" data-tags="Java"><span class="iconfont-archer">&#xe606;</span>Java</span>
     
@@ -784,6 +809,8 @@ jsonContent:
 </div>
         <div class="sidebar-panel-categories">
     <div class="sidebar-categories-name">
+    
+        <span class="sidebar-category-name" data-categories="干货翻译"><span class="iconfont-archer">&#xe60a;</span>干货翻译</span>
     
         <span class="sidebar-category-name" data-categories="漏洞分析"><span class="iconfont-archer">&#xe60a;</span>漏洞分析</span>
     
