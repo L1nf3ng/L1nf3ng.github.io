@@ -266,7 +266,7 @@ height:50vh;
                 
                 
                     <div class="post-intro-read">
-                        <span>字数统计: <span class="post-count word-count">811</span>阅读时长: <span class="post-count reading-time">3 min</span></span>
+                        <span>字数统计: <span class="post-count word-count">910</span>阅读时长: <span class="post-count reading-time">3 min</span></span>
                     </div>
                 
                 <div class="post-intro-meta">
@@ -409,25 +409,35 @@ height:50vh;
 <li><a href>http://www.ip138.com</a></li>
 <li>一个工具：<a href>https://github.com/vincentcox/bypass-firewalls-by-DNS-history/</a></li>
 </ul>
-<h3 id="MX记录（邮件探测）"><a href="#MX记录（邮件探测）" class="headerlink" title="MX记录（邮件探测）"></a>MX记录（邮件探测）</h3><p>当目标系统有发邮件功能时，留意响应包，可能会包含<code>Received:</code>等字段，其发出域名（或IP）大概率是真实IP。这类功能大多出现在<strong>注册用户、找回密码</strong>等地方。</p>
+<h3 id="Mail-头信息（邮件探测）"><a href="#Mail-头信息（邮件探测）" class="headerlink" title="Mail 头信息（邮件探测）"></a>Mail 头信息（邮件探测）</h3><p>当目标系统有发邮件功能时，留意响应包，可能会包含<code>Received:</code>等字段，其发出域名（或IP）大概率是真实IP。这类功能大多出现在<strong>注册用户、找回密码</strong>等地方。例如：</p>
+<p><img src="/2019/10/10/CDN绕过姿势复读/21.png" alt></p>
+<p><img src="/2019/10/10/CDN绕过姿势复读/22.png" alt></p>
+<p>另外一个技巧是你可以用自己的邮箱向目标邮箱发邮件：<a href="mailto:`doesnt_exists@yourtarget.com" target="_blank" rel="noopener">`doesnt_exists@yourtarget.com</a>`</p>
 <h3 id="SSL证书探测"><a href="#SSL证书探测" class="headerlink" title="SSL证书探测"></a>SSL证书探测</h3><ul>
-<li>方法一：可以利用网络空间搜索引擎进行SSL证书探测：比如censys等，语法：<code>443.https.tls.certificate.parsed.extensions.subject_alt_name.dns_names:www.xxxx.com</code></li>
-<li>方法二：一个搜集证书的网站<a href>https://crt.sh</a></li>
-<li>方法三：通过SSL证书的hash去寻找，全网匹配法！遍历<code>0.0.0.0/0:443</code>，如果证书的hash对上了，就说明是真实IP了，也可以直接用censys搜索hash值。</li>
+<li><p>方法一：可以利用网络空间搜索引擎进行SSL证书探测：比如censys等，语法：<code>443.https.tls.certificate.parsed.extensions.subject_alt_name.dns_names:www.xxxx.com</code></p>
+</li>
+<li><p>方法二：一个搜集证书的网站<a href>https://crt.sh</a></p>
+</li>
+<li><p>方法三：通过SSL证书的hash去寻找，全网匹配法！遍历<code>0.0.0.0/0:443</code>，如果证书的hash对上了，就说明是真实IP了，也可以直接用censys搜索hash值。</p>
+</li>
+<li><p>方法四：活用Censys。</p>
+<p><img src="/2019/10/10/CDN绕过姿势复读/11.png" alt></p>
+<p><img src="/2019/10/10/CDN绕过姿势复读/12.png" alt></p>
+<p><img src="/2019/10/10/CDN绕过姿势复读/13.png" alt></p>
+</li>
 </ul>
 <h3 id="不同地区服务器访问"><a href="#不同地区服务器访问" class="headerlink" title="不同地区服务器访问"></a>不同地区服务器访问</h3><p>多换换别的地区的IP发起ping请求，有可能访问到真实IP。这里提供个网址：<a href>http://ping.chinaz.com</a></p>
 <h3 id="favicon-hash匹配"><a href="#favicon-hash匹配" class="headerlink" title="favicon_hash匹配"></a>favicon_hash匹配</h3><p>和SSL证书匹配类似，这种方法利用网站favicon来匹配。这有个工具[<a href="https://github.com/Ridter/get_ip_by_ico，它利用shodan来搜索。" target="_blank" rel="noopener">https://github.com/Ridter/get_ip_by_ico，它利用shodan来搜索。</a></p>
 <h3 id="CloudFlare相关"><a href="#CloudFlare相关" class="headerlink" title="CloudFlare相关"></a>CloudFlare相关</h3><ul>
 <li><p>对于免费版CloudFlare，可以用DDoS消耗掉所有流量，之后请求便会转向真实IP；</p>
 </li>
-<li><p>另一种方法是：<a href>https://blog.detectify.com/2019/07/31/bypassing-cloudflare-waf-with-the-origin-server-ip-address/</a></p>
-<p>详细内容一会补充。</p>
+<li><p>常规思路：首先搜集尽可能多的与目标有关的IP（host, <code>nslookup</code>, <code>whois</code>, <a href="https://bgp.he.net/" target="_blank" rel="noopener">网段</a>等），然后用工具检测开启了web服务的IP（netcat, nmap, masscan），最后访问这些网站来验证是否是真实IP。</p>
 </li>
 </ul>
 <h3 id="改完域名再Ping一下"><a href="#改完域名再Ping一下" class="headerlink" title="改完域名再Ping一下"></a>改完域名再Ping一下</h3><p>有些特殊情形下，比如网站域名为<a href="http://www.xxx.edu.cn，可以试试去掉四级域名，直接ping下[xxx.edu.cn]()，有时会绕过CDN。据说是和Apache的Virtual" target="_blank" rel="noopener">www.xxx.edu.cn，可以试试去掉四级域名，直接ping下[xxx.edu.cn]()，有时会绕过CDN。据说是和Apache的Virtual</a> Host配置有关，参考：<a href="http://httpd.apache.org/docs/2.4/zh-cn/vhosts/examples.html" target="_blank" rel="noopener">http://httpd.apache.org/docs/2.4/zh-cn/vhosts/examples.html</a></p>
 <h3 id="暴力破解"><a href="#暴力破解" class="headerlink" title="暴力破解"></a>暴力破解</h3><p>在确定了目标服务器的IP段后，可以用masscan获取全部banner，据此匹配真实IP。</p>
 <h3 id="查老域名"><a href="#查老域名" class="headerlink" title="查老域名"></a>查老域名</h3><p>当老域名仍然存活时，可以看看老域名DNS记录，有可能就是真实IP。</p>
-<h3 id="利用应用类漏洞"><a href="#利用应用类漏洞" class="headerlink" title="利用应用类漏洞"></a>利用应用类漏洞</h3><p>例如phpinfo()、SSRF、上传漏洞等。（P.S. 都到这一步了，还需要找真实IP吗╮(╯▽╰)╭）</p>
+<h3 id="利用应用类漏洞"><a href="#利用应用类漏洞" class="headerlink" title="利用应用类漏洞"></a>利用应用类漏洞</h3><p>例如phpinfo()、SSRF、XSS、重定向等漏洞，将请求由目标服务器发送到我们控制的服务器或collaborator，再从log中找到真实IP。（P.S. 都到这一步了，还有必要找真实IP吗╮(╯▽╰)╭）</p>
 <h2 id="扩展"><a href="#扩展" class="headerlink" title="扩展"></a>扩展</h2><ul>
 <li>在找到目标站的真实IP后，可以用<code>hosts</code>文件绑定：windows下在<code>c:\Windows\System32\Drivers\etc\hosts</code>中，而linux下载<code>/etc/hosts</code>中</li>
 <li>BurpSuite的绑定在这个地方：<img src="/2019/10/10/CDN绕过姿势复读/28.png" alt></li>
@@ -440,7 +450,7 @@ height:50vh;
             <p>原文作者：<a href="https://l1nf3ng.github.io">Li linfeng</a>
             </p><p>原文链接：<a href="https://l1nf3ng.github.io/2019/10/10/CDN绕过姿势复读/">https://l1nf3ng.github.io/2019/10/10/CDN绕过姿势复读/</a>
             </p><p>发表日期：<a href="https://l1nf3ng.github.io/2019/10/10/CDN绕过姿势复读/">October 10th 2019, 7:05:43 pm</a>
-            </p><p>更新日期：<a href="https://l1nf3ng.github.io/2019/10/10/CDN绕过姿势复读/">October 11th 2019, 3:47:06 pm</a>
+            </p><p>更新日期：<a href="https://l1nf3ng.github.io/2019/10/10/CDN绕过姿势复读/">October 11th 2019, 7:45:38 pm</a>
             </p><p>版权声明：本文采用<a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">知识共享署名-非商业性使用 4.0 国际许可协议</a>进行许可</p>
         </div>
     
@@ -576,7 +586,7 @@ top:50vh;
         <div class="toc-catalog">
             <span class="iconfont-archer catalog-icon">&#xe613;</span><span>CATALOG</span>
         </div>
-        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#方法"><span class="toc-number">1.</span> <span class="toc-text">方法</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#域名搜索"><span class="toc-number">1.1.</span> <span class="toc-text">域名搜索</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#查询DNS历史解析记录"><span class="toc-number">1.2.</span> <span class="toc-text">查询DNS历史解析记录</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#MX记录（邮件探测）"><span class="toc-number">1.3.</span> <span class="toc-text">MX记录（邮件探测）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#SSL证书探测"><span class="toc-number">1.4.</span> <span class="toc-text">SSL证书探测</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#不同地区服务器访问"><span class="toc-number">1.5.</span> <span class="toc-text">不同地区服务器访问</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#favicon-hash匹配"><span class="toc-number">1.6.</span> <span class="toc-text">favicon_hash匹配</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#CloudFlare相关"><span class="toc-number">1.7.</span> <span class="toc-text">CloudFlare相关</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#改完域名再Ping一下"><span class="toc-number">1.8.</span> <span class="toc-text">改完域名再Ping一下</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#暴力破解"><span class="toc-number">1.9.</span> <span class="toc-text">暴力破解</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#查老域名"><span class="toc-number">1.10.</span> <span class="toc-text">查老域名</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#利用应用类漏洞"><span class="toc-number">1.11.</span> <span class="toc-text">利用应用类漏洞</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#扩展"><span class="toc-number">2.</span> <span class="toc-text">扩展</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#资料"><span class="toc-number">3.</span> <span class="toc-text">资料</span></a></li></ol>
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#方法"><span class="toc-number">1.</span> <span class="toc-text">方法</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#域名搜索"><span class="toc-number">1.1.</span> <span class="toc-text">域名搜索</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#查询DNS历史解析记录"><span class="toc-number">1.2.</span> <span class="toc-text">查询DNS历史解析记录</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Mail-头信息（邮件探测）"><span class="toc-number">1.3.</span> <span class="toc-text">Mail 头信息（邮件探测）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#SSL证书探测"><span class="toc-number">1.4.</span> <span class="toc-text">SSL证书探测</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#不同地区服务器访问"><span class="toc-number">1.5.</span> <span class="toc-text">不同地区服务器访问</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#favicon-hash匹配"><span class="toc-number">1.6.</span> <span class="toc-text">favicon_hash匹配</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#CloudFlare相关"><span class="toc-number">1.7.</span> <span class="toc-text">CloudFlare相关</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#改完域名再Ping一下"><span class="toc-number">1.8.</span> <span class="toc-text">改完域名再Ping一下</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#暴力破解"><span class="toc-number">1.9.</span> <span class="toc-text">暴力破解</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#查老域名"><span class="toc-number">1.10.</span> <span class="toc-text">查老域名</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#利用应用类漏洞"><span class="toc-number">1.11.</span> <span class="toc-text">利用应用类漏洞</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#扩展"><span class="toc-number">2.</span> <span class="toc-text">扩展</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#资料"><span class="toc-number">3.</span> <span class="toc-text">资料</span></a></li></ol>
     </div>
     
     <div class="back-top iconfont-archer">&#xe639;</div>
