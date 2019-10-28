@@ -67,16 +67,16 @@ cat temp.bin | base64 > haha.bin
 
 Java反射机制的实现体现在Class类，这个类被用来描述其他Java类，它提供的一些方法可以帮助你获取特定类的属性和方法，还能对类进行实例化，从而调用和修改它的属性。Class类常用方法如下：
 
-| 方法名                            | 功能说明                                                     |
-| :-------------------------------- | :----------------------------------------------------------- |
-| static Class forName(String name) | 返回指定类名 name 的 Class 对象                              |
-| Object newInstance()              | 调用缺省构造函数，返回该Class对象的一个实例                  |
-| Object newInstance(Object []args) | 调用当前格式构造函数，返回该Class对象的一个实例              |
-| String getName()                  | 返回此Class对象所表示的实体（类、接口、数组类、基本类型或void）名称 |
-| Class getSuperClass()             | 返回当前Class对象的父类的Class对象                           |
-| Class [] getInterfaces()          | 获取当前Class对象的接口                                      |
-| ClassLoader getClassLoader()      | 返回该类的类加载器                                           |
-| Class getSuperclass()             | 返回表示此Class所表示的实体的超类的Class                     |
+| 方法名                              | 功能说明                                                     |
+| :---------------------------------- | :----------------------------------------------------------- |
+| `static Class forName(String name)` | 返回指定类名 name 的 Class 对象                              |
+| `Object newInstance()`              | 调用缺省构造函数，返回该Class对象的一个实例                  |
+| `Object newInstance(Object[] args)` | 调用当前格式构造函数，返回该Class对象的一个实例              |
+| `String getName()`                  | 返回此Class对象所表示的实体（类、接口、数组类、基本类型或void）名称 |
+| `Class getSuperClass()`             | 返回当前Class对象的父类的Class对象                           |
+| `Class[] getInterfaces()`           | 获取当前Class对象的接口                                      |
+| `ClassLoader getClassLoader()`      | 返回该类的类加载器                                           |
+| `Class getSuperclass()`             | 返回表示此Class所表示的实体的超类的Class                     |
 
 这里展示一个简单的JAVA类及其Class类的调用方法：
 
