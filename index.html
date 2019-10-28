@@ -366,7 +366,8 @@ height:50vh;
         <div class="abstract-content">
             前言虽然，ysoserial这个工具从发布到现在有3、4年了。但它在构造序列化对象时使用了很多精巧的方法，重读一遍它的代码，对于提升java基础还是很有帮助的。这里计划写一个系列，将该工具所用到的一些类和特殊方法归类总结。如果有网友懒得自己读代码，可以读我写的这些文章。
 准确来说，本系列的第一篇的文章应该是之前写的那篇：Java反序列化漏洞解析 。今天主要说的第一个类是AnnotationInvocationHandler。
-基础知识反射机制如上一篇所说，反射机制允许程序在运行态时获取一个类的所有属性和方法，也能调用一个对象的所有方法，还能修改其属性。具体的Class对象的各种方法都请参...
+基础知识这些基础知识点和后期要分析的payload构造方法息息相关，可以现在就读，也可以在后面碰到了再回头看。
+反射机制如上一篇所说，反射机制允许程序在运行态时获取...
         </div>
         <div class="abstract-post-meta">
             <!-- date  -->
@@ -824,6 +825,12 @@ height:50vh;
     
     
     
+    
+    
+    
+    
+    
+    
     <div class="total-and-search">
         <div class="total-archive">
         Total : 7
@@ -880,11 +887,9 @@ height:50vh;
         <div class="sidebar-panel-tags">
     <div class="sidebar-tags-name">
     
-        <span class="sidebar-tag-name" data-tags="java"><span class="iconfont-archer">&#xe606;</span>java</span>
+        <span class="sidebar-tag-name" data-tags="XXE"><span class="iconfont-archer">&#xe606;</span>XXE</span>
     
-        <span class="sidebar-tag-name" data-tags="RCE"><span class="iconfont-archer">&#xe606;</span>RCE</span>
-    
-        <span class="sidebar-tag-name" data-tags="反序列化"><span class="iconfont-archer">&#xe606;</span>反序列化</span>
+        <span class="sidebar-tag-name" data-tags="OOB"><span class="iconfont-archer">&#xe606;</span>OOB</span>
     
         <span class="sidebar-tag-name" data-tags="PHP"><span class="iconfont-archer">&#xe606;</span>PHP</span>
     
@@ -894,9 +899,11 @@ height:50vh;
     
         <span class="sidebar-tag-name" data-tags="文件包含"><span class="iconfont-archer">&#xe606;</span>文件包含</span>
     
-        <span class="sidebar-tag-name" data-tags="XXE"><span class="iconfont-archer">&#xe606;</span>XXE</span>
+        <span class="sidebar-tag-name" data-tags="java"><span class="iconfont-archer">&#xe606;</span>java</span>
     
-        <span class="sidebar-tag-name" data-tags="OOB"><span class="iconfont-archer">&#xe606;</span>OOB</span>
+        <span class="sidebar-tag-name" data-tags="RCE"><span class="iconfont-archer">&#xe606;</span>RCE</span>
+    
+        <span class="sidebar-tag-name" data-tags="反序列化"><span class="iconfont-archer">&#xe606;</span>反序列化</span>
     
         <span class="sidebar-tag-name" data-tags="Java"><span class="iconfont-archer">&#xe606;</span>Java</span>
     
