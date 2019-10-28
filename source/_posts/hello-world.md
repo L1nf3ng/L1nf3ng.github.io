@@ -1,9 +1,15 @@
 ---
 title: Hello World
 ---
- 模板文档，哈哈，在这里试试新功能！NICE，hexo竟然支持热加载！！！
+测试文档，包括一些博客搭建教程。
 
 <!--more-->
+
+## 搭建教程
+
+ https://www.jianshu.com/p/860d3e0fff58 
+
+ https://www.jianshu.com/p/a2fe56d11c4f 
 
 Welcome to [Hexo](https://hexo.io/)! This is your very first post. Check [documentation](https://hexo.io/docs/) for more info.
 
