@@ -30,9 +30,9 @@ social:
   rss: 
 # friends
 friends:
-  friendA: //www.baidu.com
-  friendB: //www.google.com
-  friendC: 
+  度娘: 'https://www.baidu.com'
+  谷哥: 'https://www.google.com'
+  病友: 'https://www.bing.com'
 about:
   enable: true
   image: '/intro/about-bg.jpg'
@@ -46,11 +46,11 @@ SEO_keywords:
   - 'hexo-theme'
   - 'hexo-blog'
 # main title shown in header image
-main_title: L1nf3ng's Security Research.
+main_title: L1nf3ng's Security Research
 # subtitle
-subtitle: 安全技术研究之路
+subtitle: 免费的知识分享者
 # site haeder image
-site_header_image: '/intro/index-bg2.jpg'
+site_header_image: '/intro/index-bg3.jpg'
 # post haeder image
 post_header_image: '/intro/post-bg.jpg'
 # 404 image

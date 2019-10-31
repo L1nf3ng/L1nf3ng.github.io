@@ -204,13 +204,13 @@ java的反序列化漏洞利用思路是**构造一个恶意的类，其readObje
 
 #### 第一环节
 
-看看`BadAttributeValueExpException`类的readObject()方法：
+看看`BadAttributeValueExpException`类的`readObject()`方法：
 
 ![](Java反序列化漏洞解析\6.png)
 
 再利用Commons-collections 3.1下的几个类，我们可以构造一条奇特的反射链。简单说说Apache的`org.commons.collections`这个jar包，正如其名，它的主要目的是封装一些常用的容器类。其中，在实现一些容器类时重写了一些方法，使它们具有了别的特性。因为方便，所以使用广泛。
 
-其中第一个有用的类是[LazyMap](<https://git-wip-us.apache.org/repos/asf?p=commons-collections.git;a=blob;f=src/java/org/apache/commons/collections/map/LazyMap.java;h=b07d46ff7bdf88728ea1c74accab6cf771c98531;hb=326a1c172f5857709299bc77bd73402352214bbf>)，这个类的本来用途是在用户的Map试图get一个不存在的key时，执行一个方法来生成key的值并返回，源码中的提现如下：
+其中第一个有用的类是`LazyMap`，这个类的本来用途是在用户的Map试图get一个不存在的key时，执行一个方法来生成key的值并返回，源码中的提现如下：
 
 ```java
 public class LazyMap extends AbstractMapDecorator implements Map, Serializable {
@@ -236,7 +236,7 @@ public class LazyMap extends AbstractMapDecorator implements Map, Serializable {
 }
 ```
 
-第二个有用的类是[TiedMapEntry](https://git-wip-us.apache.org/repos/asf?p=commons-collections.git;a=blob;f=src/java/org/apache/commons/collections/keyvalue/TiedMapEntry.java;h=662a9e58bc958d14b3b0cf07691ee5150d5f05f2;hb=326a1c172f5857709299bc77bd73402352214bbf)，它的本来用途是绑定一个Map到Map.entry，这里主要用到它的toString方法：
+第二个有用的类是`TiedMapEntry`，它的本来用途是绑定一个Map到Map.entry，这里主要用到它的toString方法：
 
 ```java
 public class TiedMapEntry implements Entry, KeyValue, Serializable {
@@ -263,7 +263,7 @@ public class TiedMapEntry implements Entry, KeyValue, Serializable {
 
 ```
 
-那这里的toString中的getValue实际就是this.map.get(this.key)了。很好，将上面两者组合一下，例如这样：
+那这里的`toString()`中的`getValue()`实际就是`this.map.get(this.key)`了。很好，将上面两者组合一下，例如这样：
 
 ```java
 // xxx 代表Transformer类，代表了转换的方式
