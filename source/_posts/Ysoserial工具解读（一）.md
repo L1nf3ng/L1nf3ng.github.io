@@ -182,7 +182,7 @@ Process finished with exit code 0
 
 ![](Ysoserial工具解读（一）\proxy.png)
 
-上图中Subject是一个接口，真正的实现类RealSubject和代理类Proxy都实现了这一接口。只不过在使用`Proxy.newProxyInstance()`时不用实际创建代理类，而是通过实现`InvocationHandler`接口的`invoke()`方法来修改真实类的方法。
+上图中Subject是一个接口，真正的实现类RealSubject和代理类Proxy都实现了这一接口。只不过在使用`Proxy.newProxyInstance()`时不用实际创建代理类；另外，通过`InvocationHandler`接口的`invoke()`方法来修改真实类的方法时要注意：**它只能修改原接口定义过的方法，而无法修改实现类新加的方法**。
 
 ## `AnnotationInvocationHandler`类
 

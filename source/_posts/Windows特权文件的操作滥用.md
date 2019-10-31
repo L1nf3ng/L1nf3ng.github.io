@@ -7,9 +7,9 @@ categories: 干货复读
 
 这篇文章（稍微有点长）介绍如何利用Windows特权进程的文件操作实现本地权限提升（从用户级到管理员/系统级），并展示利用这类bug的技术、工具和详细步骤。
 
-翻译自：[https://offsec.provadys.com/intro-to-file-operation-abuse-on-Windows.html]()
-
 <!--more-->
+
+翻译自：[https://offsec.provadys.com/intro-to-file-operation-abuse-on-Windows.html]()
 
 ## 特权文件操作的Bug
 
