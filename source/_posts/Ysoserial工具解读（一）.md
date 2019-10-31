@@ -5,7 +5,6 @@ tags: [java, RCE,反序列化]
 categories: 漏洞分析
 ---
 
-<<<<<<< HEAD
 今天要说的第一个类是`AnnotationInvocationHandler`，主要是CommonsCollections1.java的内容。
 
 <!-- more -->
