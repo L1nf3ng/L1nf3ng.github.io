@@ -5,6 +5,7 @@ tags: [java, RCE,反序列化]
 categories: 漏洞分析
 ---
 
+<<<<<<< HEAD
 今天要说的第一个类是`AnnotationInvocationHandler`，主要是CommonsCollections1.java的内容。
 
 <!-- more -->
@@ -12,7 +13,6 @@ categories: 漏洞分析
 ## 前言
 
 虽然，[ysoserial](https://github.com/frohoff/ysoserial.git)这个工具从发布到现在有3、4年了。但它在构造序列化对象时使用了很多精巧的方法，重读一遍它的代码，对于提升java基础还是很有帮助的。这里计划写一个系列，将该工具所用到的一些类和特殊方法归类总结。如果有网友懒得自己读代码，可以读我写的这些文章。
-
 准确来说，本系列的第一篇文章应该是半年前写的那篇：[Java反序列化漏洞解析](https://l1nf3ng.github.io/2019/03/27/Java反序列化漏洞解析/) 。
 
 ## 基础知识
@@ -371,7 +371,6 @@ Exception in thread "main" java.lang.ClassCastException: java.lang.Integer canno
 
 Process finished with exit code 1
 ```
-
 ## References:
 
 1. [ https://www.cnblogs.com/Welk1n/p/10511145.html ]()
