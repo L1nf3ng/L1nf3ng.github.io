@@ -200,3 +200,58 @@ public Object getValue() {
 
 ![](Ysoserial工具解读（四）\debug5.png)
 
+### 一点点补充
+
+可能在读代码时大家也会疑惑，像`HashSet.map`和`HashMap.table`都是`transient`关键字修饰的，也就是不参加序列化的。那其中的数据为何在反序列化时还能访问到，一开始我也想不明白。直到看了一篇[博客](https://www.cnblogs.com/CatMage/p/10732889.html)，才意识到我忽略了很重要的内容——它们的`writeObject()`方法：
+
+```java
+/*	HashSet.java
+*/
+
+private void writeObject(java.io.ObjectOutputStream s)
+throws java.io.IOException {
+// Write out any hidden serialization magic
+s.defaultWriteObject();
+
+// Write out HashMap capacity and load factor
+s.writeInt(map.capacity());
+s.writeFloat(map.loadFactor());
+
+// Write out size
+s.writeInt(map.size());
+
+// Write out all elements in the proper order.
+for (E e : map.keySet())
+s.writeObject(e);
+}
+
+// ========================================================================
+
+/*	HashMap.java
+*/
+
+private void writeObject(java.io.ObjectOutputStream s)
+    throws IOException {
+    int buckets = capacity();
+    // Write out the threshold, loadfactor, and any hidden stuff
+    s.defaultWriteObject();
+    s.writeInt(buckets);
+    s.writeInt(size);
+    internalWriteEntries(s);
+}
+
+// Called only from writeObject, to ensure compatible ordering.
+void internalWriteEntries(java.io.ObjectOutputStream s) throws IOException {
+    Node<K,V>[] tab;
+    if (size > 0 && (tab = table) != null) {
+        for (int i = 0; i < tab.length; ++i) {
+            for (Node<K,V> e = tab[i]; e != null; e = e.next) {
+                s.writeObject(e.key);
+                s.writeObject(e.value);
+            }
+        }
+    }
+}
+```
+
+它们在进行序列化时都将自己的集合类（map、table）中的元素按顺序取出并做了序列化。因此，在反序列化时只需要按顺序读取集合元素就行了。
