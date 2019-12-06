@@ -5,6 +5,8 @@ tags: [Java, RCE,反序列化]
 categories: 漏洞分析
 ---
 
+## 基础知识
+
 ## 
 
 
@@ -14,4 +16,6 @@ categories: 漏洞分析
 * https://xz.aliyun.com/t/6660 
 * https://xz.aliyun.com/t/2649
 * https://xz.aliyun.com/t/2651 
+* https://xz.aliyun.com/t/2650 
 * https://www.anquanke.com/post/id/190468
+
