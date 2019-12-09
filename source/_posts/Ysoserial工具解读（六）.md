@@ -7,9 +7,9 @@ categories: 漏洞分析
 
 ## 基础知识
 
-## 
+### RMI是什么
 
-
+![](Ysoserial工具解读（六）\rmi.JPG)
 
 ## References
 
@@ -17,5 +17,6 @@ categories: 漏洞分析
 * https://xz.aliyun.com/t/2649
 * https://xz.aliyun.com/t/2651 
 * https://xz.aliyun.com/t/2650 
+* https://www.anquanke.com/post/id/194384 
 * https://www.anquanke.com/post/id/190468
 
