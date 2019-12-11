@@ -26,11 +26,98 @@ RMI（Remote Method Invocation，远程方法调用）类似于RPC（Remote Proc
 
 ### 代码示例
 
-Server端：
+要求：Server端和Client端之间共享一个接口。
+
+```java
+/**
+**	通用接口：
+**/
+import java.rmi.Remote;
+import java.rmi.RemoteException;
+
+//远程接口
+public interface ImInterface extends Remote {
+    public String hello(String a) throws RemoteException;
+}
+```
+可以用`javac`将编译成class文件发给对方，或者直接告诉其源码内容（类名称、方法名称必须相同）
+```java
+/**
+**	Server端：Rmf_server.java
+**/
+import java.rmi.Naming;
+import java.rmi.Remote;
+import java.rmi.RemoteException;
+import java.rmi.registry.Registry;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.server.UnicastRemoteObject;
+
+public class Rmf_server{
+
+    public class RemoteHelloWorld extends UnicastRemoteObject implements ImInterface {
+        private RemoteHelloWorld() throws RemoteException {
+            super();
+            System.out.println("you're in construction.");
+        }
+
+        public String hello(String a) throws RemoteException {
+            System.out.println("call from");
+            return "Hello world";
+        }
+    }
+
+    //注册远程对象
+    private void start() throws Exception {
+        //远程对象实例
+        RemoteHelloWorld h = new RemoteHelloWorld();
+        //创建注册中心
+        Registry registry = LocateRegistry.createRegistry(5599);
+        //绑定对象实例到注册中心
+        registry.bind("Hello", h);
+    }
+
+    public static void main(String[] args)throws Exception{
+        new Rmf_server().start();
+    }
+
+}
 
 
+/**
+**	Client端：HappyEnding.java
+**/
+import java.lang.System;
+import java.rmi.Naming;
+
+public class HappyEnding{
+
+    public static void main(String[] args) throws Exception {
+        // list()方法用来查询目标主机上注册机中可用的对象名
+        String[] names = Naming.list("rmi://10.10.10.136:5599/");
+        for( String name : names){
+            System.out.println(name);
+        }
+        // lookup()方法获取目标对象的Stub
+        ImInterface ss = (ImInterface)Naming.lookup(names[0]);
+        String result = ss.hello("ni hao!");
+        System.out.println(result);
+
+    }        
+
+}
+```
+
+在启动server端后，用client端去连，可以看到调用成功返回的结果：
+
+```powershell
+F:\Studio>java HappyEnding
+//10.10.10.136:5599/Hello
+Hello world
+```
 
 ## 利用姿势
+
+
 
 ## References
 
