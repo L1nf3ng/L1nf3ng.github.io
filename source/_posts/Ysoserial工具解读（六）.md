@@ -276,7 +276,39 @@ BadAttributeValueExpException val = new BadAttributeValueExpException(entry);
 
 ### 攻击Server——方法2
 
-利用JVM动态类加载机制
+利用JVM动态加载类制发起攻击，该机制的原理类似Unix-like系统的源机制，如果JVM要调用某个类但在当前classpath中找不到其定义，则会按照`java.rmi.server.codebase`属性（其他默认限制条件都打开）定义的远程地址寻找类的class文件。codebase支持`http://`、`ftp://`、`file://`等协议，举几个会触发远程加载的情形：
+
+* 对于客户端，如果调用的服务端方法的返回值是某个已知类的子类，但客户端本身没有该子类的class文件，客户端就**会按服务端提供的codebaseURL去加载类**。
+* 对于服务端，如果客户端传递给方法的参数是原参数类型的子类，但服务端没有该子类的class文件，服务端就**会按客户端提供的codebaseURL去加载类**。
+
+开启RMI的codebase特性需要满足以下条件：
+
+1. 需要安装RMISecurityManager并且配置java.security.policy。
+
+   >```java
+   >/** Code Related  **/
+   >
+   >import java.lang.SecurityManager;
+   >
+   >System.setProperty("java.security.policy", xxx.class.getClassLoader().getResource("java.policy").getFile());
+   >SecurityManager securityManager = new SecurityManager();
+   >System.setSecurityManager(securityManager);
+   >```
+   >在resources文件夹下写入java.policy文件：
+   >
+   >```json
+   >//Standard extensions get all permissions by default
+   >
+   >grant {
+   >	permission java.security.AllPermission;
+   >};
+   >```
+
+2. 属性 java.rmi.server.useCodebaseOnly 的值必需为false。从JDK 6u45、7u21开始，其默认值就是true。
+
+示例代码如下：
+
+
 
 ### 攻击Registry
 
@@ -371,7 +403,7 @@ java -cp target\ysoserial-0.0.6-SNAPSHOT-all.jar ysoserial.exploit.RMIRegistryEx
 
 注册机在收到序列化数据后的处理过程如下图，前面的从线程池接受请求到TCPTransport处理请求的过程这里不再详述，如果想知道细节，可以读这篇→[https://xz.aliyun.com/t/2223 ]()，其中`“RMI Server 的 RegistryImpl”`章节详细分析了服务端注册表的`bind()`过程。
 
-![](Ysoserial工具解读（六）\server_registry.jpg)
+![](Ysoserial工具解读（六）\Server_registry.jpg)
 
 这里分析的是中间的过程，看调用栈可知`RegistryImpl_Skel`的`dispatch()`方法调用了开启了`readObject()`，反序列化得到第一个类是`AnnotationInvocationHandler`，它的`readObject()`方法：
 
