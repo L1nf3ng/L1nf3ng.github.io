@@ -73,7 +73,7 @@ pagination_dir: page
 # Extensions
 ## Plugins: https://hexo.io/plugins/
 ## Themes: https://hexo.io/themes/
-theme: material
+theme: archer
 
 # Deployment
 ## Docs: https://hexo.io/docs/deployment.html
@@ -101,25 +101,4 @@ jsonContent:
     excerpt: false
     categories: true
     tags: true
-
-
-
-live2d:
-  enable: true                                   #开启看板娘
-  scriptFrom: local
-  pluginRootPath: live2dw/
-  pluginJsPath: lib/
-  pluginModelPath: assets/
-  tagMode: false
-  log: false
-  model:
-    use: live2d-widget-model-gf     #指定模型任务
-  display:
-    position: right                              #显示位置
-    width: 200                                   #模型宽度
-    height: 400                                  #模型高度
-  mobile:
-    show: true                                  #是否在移动端显示
-
-
 
