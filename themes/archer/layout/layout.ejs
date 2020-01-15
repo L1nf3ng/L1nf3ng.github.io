@@ -47,6 +47,9 @@
             document.write('<script src="<%- url_for('lib/jquery.min.js') %>">\x3C/script>')
         }
     </script>
+    
+    <script src="/live2d-widget/autoload.js"></script>
+
     <script src="<%- url_for('/scripts/main.js') %>"></script>
     <!-- algolia -->
     <% if (theme.algolia_search.enable) { %>
