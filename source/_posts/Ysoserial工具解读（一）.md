@@ -3,6 +3,7 @@ title: Ysoserial工具解读（一）
 date: 2019-10-23 16:31:10
 tags: [Java, RCE,反序列化]
 categories: 漏洞分析
+cover: java_cover.png
 ---
 
 今天要说的第一个类是`AnnotationInvocationHandler`，主要是CommonsCollections1.java的内容。
@@ -79,15 +80,15 @@ public class Reflections {
 
 这里我在CSDN上找到一篇比较通俗的讲解，简单复读一下：直接举例吧，假设你在以OOP的方式写一个活动奖励发放的业务，第一个版本里你给每个活动（不同种类）创建了一个类，因为每个活动在计算奖励前都要做校验工作（用户是否登录、活动是否有效等），你在写每个类时都copy了一份同样功能的代码（当然，我想现在估计没人这么写代码了）：
 
-![](Ysoserial工具解读（一）\aop1.png)
+![](aop1.png)
 
 然后，在第二版中你将校验功能做了抽象，将它们放在了一个接口中，每个活动类`implements`一下，这样便节省了好多代码。现在已经是一种类似AOP的编程思想了。
 
-![](Ysoserial工具解读（一）\aop2.png)
+![](aop2.png)
 
 我们再将上面的版本抽象，将校验功能抽离出来。将上述过程变为在某个类需要它时将其动态注入。除了以*接口形式*实现，AOP还可以通过*注解*、*XML*形式实现。
 
-![](Ysoserial工具解读（一）\aop3.png)
+![](aop3.png)
 
 ### 动态代理
 
@@ -179,7 +180,7 @@ Process finished with exit code 0
 
 一般使用JDK原生动态代理的编写模式如下图：
 
-![](Ysoserial工具解读（一）\proxy.png)
+![](proxy.png)
 
 上图中Subject是一个接口，真正的实现类RealSubject和代理类Proxy都实现了这一接口。只不过在使用`Proxy.newProxyInstance()`时不用实际创建代理类；另外，通过`InvocationHandler`接口的`invoke()`方法来修改真实类的方法时要注意：**它只能修改原接口定义过的方法，而无法修改实现类新加的方法**。
 
@@ -235,7 +236,7 @@ public InvocationHandler getObject(final String command) throws Exception {
 
 关于 `Transformer[] transformers`的分析可以参考上一篇，这里主要关注剩余攻击链的构造：
 
-![](Ysoserial工具解读（一）\code1.png)
+![](code1.png)
 
 这两个函数的内容如下：
 
@@ -264,7 +265,7 @@ public static <T> T createProxy ( final InvocationHandler ih, final Class<T> ifa
 
 这段调用看上去有些凌乱，这里用一张图整理一下。因为写代码的人为了方便，他在创建`lazyMap`的代理类后又将它用做`AnnotationHandler`实例的`memberValues`变量值。
 
-![](Ysoserial工具解读（一）\code2.png)
+![](code2.png)
 
 如上述代码，`createMemoizedInvocationHandler()`创建了一个`AnnotationInvocationHandler`的实例，而它的相关代码如下：
 

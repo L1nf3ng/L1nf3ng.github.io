@@ -3,6 +3,7 @@ title: Ysoserial工具解读（六）
 date: 2019-11-19 14:45:24
 tags: [Java, RCE,反序列化]
 categories: 漏洞分析
+cover: java_cover.png
 ---
 
 这一篇主要讲述Java RMI（及其实现协议JRMP）相关的反序列化漏洞，内容有点多，断断续续地写了一个月。文章里预测的几种攻击方式几乎都得到了验证，但通过RMI从服务端攻击客户端的实验目前失败了（具体原因还在探寻中），而Ysoserial则利用JRMP的DGC协议实现。
@@ -26,7 +27,7 @@ RMI（Remote Method Invocation，远程方法调用）类似于RPC（Remote Proc
 7. JVM结合方法声明和参数并将运算结果返回Skeleton
 8. Skeleton再将运算结果发送给Client对象
 
-![](Ysoserial工具解读（六）\rmi.JPG)
+![](rmi.JPG)
 
 ### 代码示例
 
@@ -268,11 +269,11 @@ BadAttributeValueExpException val = new BadAttributeValueExpException(entry);
 
 运行效果如图：
 
-![](Ysoserial工具解读（六）\exp1.jpg)
+![](exp1.jpg)
 
 实际在Server端的调用栈如下图：
 
-![](Ysoserial工具解读（六）\Server_rdobj.jpg)
+![](Server_rdobj.jpg)
 
 因为RCE肯定会执行到`BadAttributeValueExpException`的`ReadObject()`方法，所以在这里打了断点守着。
 
@@ -431,7 +432,7 @@ public class testRMI {
 
 这里的场景和之前描述的一致，10.10.10.136是一台linux主机，上面开启了http的8000端口，同时也是RMI客户端。10.10.10.1是一台win10主机，也是RMI服务端，它同时提供了codebase的URL地址。客户端在调用方法时因其不知返回值EvilObject类的定义，所以会按照codebase URL去找class文件。服务端依据客户端提供的参数在自己的JVM上实例化对象并执行方法调用，在实例化EvilObject对象时执行了payload。
 
-![](Ysoserial工具解读（六）\port8000.jpg)
+![](port8000.jpg)
 
 ### 攻击server——方法3，攻击Registry
 
@@ -526,7 +527,7 @@ java -cp target\ysoserial-0.0.6-SNAPSHOT-all.jar ysoserial.exploit.RMIRegistryEx
 
 注册机在收到序列化数据后的处理过程如下图，前面的从线程池接受请求到TCPTransport处理请求的过程这里不再详述，如果想知道细节，可以读这篇→[https://xz.aliyun.com/t/2223 ]()，其中`“RMI Server 的 RegistryImpl”`章节详细分析了服务端注册表的`bind()`过程。
 
-![](Ysoserial工具解读（六）\Server_registry.jpg)
+![](Server_registry.jpg)
 
 这里分析的是中间的过程，看调用栈可知`RegistryImpl_Skel`的`dispatch()`方法调用了开启了`readObject()`，反序列化得到第一个类是`AnnotationInvocationHandler`，它的`readObject()`方法：
 
@@ -544,11 +545,11 @@ private void readObject(ObjectInputStream var1) throws IOException, ClassNotFoun
 
 `var1`的`defaultReadObject()`反序列化出了代理类的Hashmap对象，该对象的key-value又分别反序列化，如图：
 
-![](Ysoserial工具解读（六）\defaultReadObject.jpg)
+![](defaultReadObject.jpg)
 
 value在反序列化时就引发了后面的调用过程（PriorityQueue -> TransformingComparator  -> InvokerTransformer -> ...），如下： P.S.详见Ysoserial工具解读（二）。
 
-![](Ysoserial工具解读（六）\Server_registry2.jpg)
+![](Server_registry2.jpg)
 
 ### 攻击Client
 
@@ -741,7 +742,7 @@ private void readObject(java.io.ObjectInputStream in)
 
 依据payload的生成过程，可知`refClassName`实际上是`UnicastRef.class`，因此会进入else子句，并开启`ref.readExternal(in)`。后面的调用过程不再详述，具体见下图，最终建立一个TCPEndpoint，向我们控制的vps发送DGC请求，这个过程实际和RMIRegistry的DGC部分一致。
 
-![](Ysoserial工具解读（六）\payloads_client.jpg)
+![](payloads_client.jpg)
 
 #### `Exploit/JRMPListener`
 
@@ -871,7 +872,7 @@ private void doCall ( DataInputStream in, DataOutputStream out, Object payload )
 
 这里生成payload实际用的CommonsCollections5中`BadAttributeValueExpException.val`成员变量做的最外层包裹，实际的反序列化过程可以看做CommonsCollections5和payload调用链的组合。这里也不再赘述。下图为JRMPListener的打印信息。
 
-![](Ysoserial工具解读（六）\vps_Listener.jpg)
+![](vps_Listener.jpg)
 
 ## References
 

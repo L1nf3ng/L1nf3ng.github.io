@@ -3,6 +3,7 @@ title: Ysoserial工具解读（五）
 date: 2019-11-05 10:39:59
 tags: [Java, RCE,反序列化]
 categories: 漏洞分析
+cover: java_cover.png
 ---
 
 这篇博客介绍CommonsBeanutils1的构造方式，相比于之前分析过的其他Payload。这次利用的`beanutils.BeanComparator`、`beanutils.PropertyUtils`类的调用链更长，但最终又会回到之前介绍过的调用链上。

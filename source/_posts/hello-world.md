@@ -1,6 +1,7 @@
 ---
 title: Hello World
 date: 2019-03-26 00:34:14
+cover: cover.jpg
 ---
 测试文档，包括一些博客搭建教程。
 
@@ -58,4 +59,4 @@ More info: [Deployment](https://hexo.io/docs/deployment.html)
 
 如果没有加载便签页，大概是因为视频源链接用的http协议。这在github page页面存在证书的情况下是被认为不安全的，此时可以在Chrome的地址栏点击允许符号，如下：
 
-![](hello-world\1.png)
+![](1.png)

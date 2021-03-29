@@ -3,6 +3,7 @@ title: Ysoserial工具解读（三）
 date: 2019-10-31 11:21:05
 tags: [Java, RCE,反序列化]
 categories: 漏洞分析
+cover: java_cover.png
 ---
 
 前面两篇已经介绍了不少基础知识，接下来可以加快分析的速度了。今天分析CommonsCollections3.java和CommonsCollections4.java中用到的类，主要是`InstantiateTransformer`类和`TrAXFilter`类。

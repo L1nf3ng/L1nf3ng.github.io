@@ -3,12 +3,12 @@
 ## Source: https://github.com/hexojs/hexo/
 
 # Site
-title: Hexo
-subtitle: ''
-description: ''
-keywords:
-author: John Doe
-language: en
+title: Linf3ng's Blog
+subtitle: "L1nf3ng's Blog"
+description: '站在更高的角度看安全'
+keywords: 安全、开发、架构
+author: L1f3ng
+language: zh-CN
 timezone: ''
 
 # URL
@@ -40,7 +40,7 @@ external_link:
   exclude: ''
 filename_case: 0
 render_drafts: false
-post_asset_folder: false
+post_asset_folder: true
 relative_link: false
 future: true
 highlight:

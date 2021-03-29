@@ -3,6 +3,7 @@ title: Ysoserial工具解读（二）
 date: 2019-10-30 09:19:33
 tags: [Java, RCE,反序列化]
 categories: 漏洞分析
+cover: java_cover.png
 ---
 
 今天再来分析CommonsCollections2.java中用到的类，主要包括`PriorityQueue`、`TemplatesImpl`。
@@ -50,7 +51,7 @@ public class LearnAssist {
 
 在IDEA中运行这段代码，可以看到新生成的.class文件，点击它时默认调用`javap`做了反编译：
 
-![](Ysoserial工具解读（二）\code1.png)
+![](code1.png)
 
 ## Javassist的利用
 
@@ -149,7 +150,7 @@ public static <T> T createTemplatesImpl ( final String command, Class<T> tplClas
 
 可以看到这里用Javassist获取了`StubTransletPayload`类后，对它进行了修改（改了名称、添加了父类（其实没变化）、创建了静态构造函数），为了演示这一效果，我将代码拷贝如新的java文件中，运行结果如下：
 
-![](Ysoserial工具解读（二）\code2.png)
+![](code2.png)
 
 ## 攻击链之`PriorityQueue`类
 
@@ -359,7 +360,7 @@ public final class TemplatesImpl implements Templates, Serializable {
 
 调试信息显示的调用栈如下：
 
-![](Ysoserial工具解读（二）\debug.png)
+![](debug.png)
 
 其实，最好的理解方式就是模拟反序列化的操作，并在关键的位置打上断点去跟踪。我写的几篇文章的价值是为读者补充一些基础知识，整个调用栈的完整过程真不如自己debug来的清楚。
 

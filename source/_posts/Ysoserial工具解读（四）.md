@@ -3,6 +3,7 @@ title: Ysoserial工具解读（四）
 date: 2019-10-31 19:55:49
 tags: [Java, RCE,反序列化]
 categories: 漏洞分析
+cover: java_cover.png
 ---
 
 这篇博客介绍CommonsCollections5、6的构造方式，Apache的这个jar包（版本3.1、4.0）总算要分析完了。这两个java文件都利用了`org.apache.commons.collections`下的`TiedMapEntry`和`LazyMap`两个类。不同的是5在外层利用了`BadAttributeValueExpException`类，而6利用了`HashSet`类。
@@ -15,19 +16,19 @@ categories: 漏洞分析
 
 > 我在IDEA的debug下给`javax.management.BadAttributeValueExpException`的`readObject()`方法打了断点，如下图：
 >
-> ![](Ysoserial工具解读（四）/debug1.png)
+> ![](debug1.png)
 >
 > 我发现代码在过了第一个断点后就弹出了计算器，一开始我怀疑之前看的分析文章都搞错了。后来仔细观察发现，在debug的变量观察窗口里的`TiedMapEntry`对象已经被调试器做了解析：
 >
-> ![](Ysoserial工具解读（四）/debug2.png)
+> ![](debug2.png)
 >
 > 所以，我的猜测是调试器的查看变量功能的进/线程在做解析时会去尝试get每个Map的Key-Value值，这就提前触发了利用链（为了验证这一猜测，我调整了一下CommonsCollections5的payload构造方法里代码的顺序，并打上断点观察其运行结果——发现调试器真得会去解析Map类对象，从而提前触发了攻击链）。
 >
-> ![](Ysoserial工具解读（四）/debug4.png)
+> ![](debug4.png)
 >
 > 因此，我去掉之前的断点，将新断点打在`LazyMap.get()`方法中，这次调用链没有提前触发，观察已经走过的调用栈也是对的，最后单步那行代码的确弹出了计算器！
 >
-> ![](Ysoserial工具解读（四）/debug3.png)
+> ![](debug3.png)
 
 所以，以后分析和调试代码时还是要细心才行，不然很容易搞错。
 
@@ -114,7 +115,7 @@ public Serializable getObject(final String command) throws Exception {
 
 因此，在经历上述构造后，最终的Payload长这个样子：
 
-![](Ysoserial工具解读（四）\payload.png)
+![](payload.png)
 
 ### `HashSet`类
 
@@ -198,7 +199,7 @@ public Object getValue() {
 
 最后我在`InvokerTransformer.transform()`处打了断点，开启调试模式，就可以看到完整调用栈。对，就是这么懒(*￣rǒ￣)！
 
-![](Ysoserial工具解读（四）\debug5.png)
+![](debug5.png)
 
 ### 一点点补充
 

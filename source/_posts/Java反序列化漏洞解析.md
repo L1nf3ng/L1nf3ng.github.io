@@ -3,6 +3,7 @@ title: Java反序列化漏洞解析
 date: 2019-03-27 11:19:27
 tags: [Java,RCE,反序列化]
 categories: 漏洞分析
+cover: cover.jpeg
 ---
 Java的反序列化漏洞可以说是Java Web里杀伤力很强的漏洞，因为反序列化经常被用在对象存储进Cookie的过程中，而这类漏洞被触发几乎都能造成RCE。笔者在学习研究该漏洞的过程中遇到了不少困惑，通过查阅资料与阅读源码，最终得出了答案。
 <!--more-->
@@ -47,7 +48,7 @@ public class Test implements Serializable {
 
 用二进制文件编辑器（这里是hexedit）打开后，可以看到Test对象序列化后的结果。请注意开头的字符。
 
-![](Java反序列化漏洞解析\2.png)
+![](2.png)
 
 因为序列化对象在web中经常会被base64编码，我们用bash转换一下，并再次用文件编辑器打开观察。
 
@@ -55,7 +56,7 @@ public class Test implements Serializable {
 cat temp.bin | base64 > haha.bin
 ```
 
-![](Java反序列化漏洞解析\3.png)
+![](3.png)
 
 观察发现，java序列化的数据一般会以标记（`ac ed 00 05`）开头，base64编码后的特征为（`rO0AB`），这个特征也是寻找反序列化漏洞的重要线索。
 
@@ -150,7 +151,7 @@ public class PersonTest {
 
 运行测试代码后的结果如下：
 
-![](Java反序列化漏洞解析\4.png)
+![](4.png)
 
 利用反射方式我们可以改写经典的jsp一句话木马，执行后就可以看到计算器的弹出：
 
@@ -206,7 +207,7 @@ java的反序列化漏洞利用思路是**构造一个恶意的类，其readObje
 
 看看`BadAttributeValueExpException`类的`readObject()`方法：
 
-![](Java反序列化漏洞解析\6.png)
+![](6.png)
 
 再利用Commons-collections 3.1下的几个类，我们可以构造一条奇特的反射链。简单说说Apache的`org.commons.collections`这个jar包，正如其名，它的主要目的是封装一些常用的容器类。其中，在实现一些容器类时重写了一些方法，使它们具有了别的特性。因为方便，所以使用广泛。
 
@@ -289,7 +290,7 @@ field.set(ve, entry);
 
 上面串了那么多的调用，为的就是引入Transformer接口类。而与之相关的类还有以下几个：
 
-![](Java反序列化漏洞解析\5.png)
+![](5.png)
 
 这些类全都实现了抽象接口Transformer，该接口定义了transform方法来决定子类的行为，我们先直接贴出构造好的反射链：
 
@@ -367,7 +368,7 @@ Transformer transformedChain = new ChainedTransformer(transformers);
 
 最后，总结一下上述的payload构造过程。它的调用堆栈如下图：
 
-![](Java反序列化漏洞解析\9.png)
+![](9.png)
 
 完整版的漏洞利用代码和演示结果：
 
@@ -460,7 +461,7 @@ public class ExploitTest {
 }
 ```
 
-![](Java反序列化漏洞解析\1.gif)
+![](1.gif)
 
 就像测试代码里写的那样，服务端本来是想反序列化一个AnyClass对象（编译器提示的ClassCastException），但实际上却造成了RCE。
 
@@ -468,7 +469,7 @@ public class ExploitTest {
 
 构造Java反序列化漏洞Payload的方式不止一种，例如用`com.sun.org.apache.xalan`包中的`TemplatesImpl `类构造上一节描述的第二环节，用`PriorityQueue`、`Hashset`等类构造第一环节。相关的研究成果已经被[frohoff](https://twitter.com/frohoff)整理成了工具[ysoserial](https://github.com/frohoff/ysoserial)，它所支持生成的Payload如下:
 
-![](Java反序列化漏洞解析\8.png)
+![](8.png)
 
 工具的用法和说明直接浏览其github，这里不表。
 

@@ -3,6 +3,7 @@ title: CDN绕过姿势复读
 date: 2019-10-10 19:05:43
 tags: [信息搜集]
 categories: 干货复读
+cover: cover.jpeg
 ---
 
 今天在信安之路公众号上读到一篇关于CDN Bypass的干货文章，觉得总结得很好。这里对里面提到的技巧做详细解释，安分地做好一台复读机！
@@ -33,9 +34,9 @@ categories: 干货复读
 
 当目标系统有发邮件功能时，留意响应包，可能会包含`Received:`等字段，其发出域名（或IP）大概率是真实IP。这类功能大多出现在**注册用户、找回密码**等地方。例如：
 
-![](CDN绕过姿势复读\21.png)
+![](21.png)
 
-![](CDN绕过姿势复读\22.png)
+![](22.png)
 
 另外一个技巧是你可以用自己的邮箱向目标邮箱发邮件：`doesnt_exists@yourtarget.com`
 
@@ -49,11 +50,11 @@ categories: 干货复读
 
 * 方法四：活用Censys。
 
-  ![](CDN绕过姿势复读\11.png)
+  ![](11.png)
 
-  ![](CDN绕过姿势复读\12.png)
+  ![](12.png)
 
-  ![](CDN绕过姿势复读\13.png)
+  ![](13.png)
 
 ### 不同地区服务器访问
 
@@ -88,6 +89,6 @@ categories: 干货复读
 ## 扩展
 
 * 在找到目标站的真实IP后，可以用`hosts`文件绑定：windows下在`c:\Windows\System32\Drivers\etc\hosts`中，而linux下载`/etc/hosts`中
-* BurpSuite的绑定在这个地方：![](CDN绕过姿势复读\28.png)
+* BurpSuite的绑定在这个地方：![](28.png)
 
 ## 资料
