@@ -1,0 +1,281 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Windows特权文件的操作滥用 | Linf3ng's Blog</title><meta name="keywords" content="本地提权,Windows"><meta name="author" content="L1f3ng"><meta name="copyright" content="L1f3ng"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="这篇文章（稍微有点长）介绍如何利用Windows特权进程的文件操作实现本地权限提升（从用户级到管理员&#x2F;系统级），并展示利用这类bug的技术、工具和详细步骤。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Windows特权文件的操作滥用">
+<meta property="og:url" content="http://example.com/2019/04/01/Windows%E7%89%B9%E6%9D%83%E6%96%87%E4%BB%B6%E7%9A%84%E6%93%8D%E4%BD%9C%E6%BB%A5%E7%94%A8/index.html">
+<meta property="og:site_name" content="Linf3ng&#39;s Blog">
+<meta property="og:description" content="这篇文章（稍微有点长）介绍如何利用Windows特权进程的文件操作实现本地权限提升（从用户级到管理员&#x2F;系统级），并展示利用这类bug的技术、工具和详细步骤。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2019/04/01/Windows%E7%89%B9%E6%9D%83%E6%96%87%E4%BB%B6%E7%9A%84%E6%93%8D%E4%BD%9C%E6%BB%A5%E7%94%A8/cover.jpg">
+<meta property="article:published_time" content="2019-04-01T09:53:25.000Z">
+<meta property="article:modified_time" content="2021-03-29T18:39:07.279Z">
+<meta property="article:author" content="L1f3ng">
+<meta property="article:tag" content="本地提权">
+<meta property="article:tag" content="Windows">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2019/04/01/Windows%E7%89%B9%E6%9D%83%E6%96%87%E4%BB%B6%E7%9A%84%E6%93%8D%E4%BD%9C%E6%BB%A5%E7%94%A8/cover.jpg"><link rel="shortcut icon" href="/img/panda.ico"><link rel="canonical" href="http://example.com/2019/04/01/Windows%E7%89%B9%E6%9D%83%E6%96%87%E4%BB%B6%E7%9A%84%E6%93%8D%E4%BD%9C%E6%BB%A5%E7%94%A8/"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css" media="print" onload="this.media='all'"><script>const GLOBAL_CONFIG = { 
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  noticeOutdate: undefined,
+  highlight: {"plugin":"highlighjs","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false},
+  copy: {
+    success: '复制成功',
+    error: '复制错误',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  date_suffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'fancybox',
+  Snackbar: undefined,
+  source: {
+    jQuery: 'https://cdn.jsdelivr.net/npm/jquery@latest/dist/jquery.min.js',
+    justifiedGallery: {
+      js: 'https://cdn.jsdelivr.net/npm/justifiedGallery/dist/js/jquery.justifiedGallery.min.js',
+      css: 'https://cdn.jsdelivr.net/npm/justifiedGallery/dist/css/justifiedGallery.min.css'
+    },
+    fancybox: {
+      js: 'https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@latest/dist/jquery.fancybox.min.js',
+      css: 'https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@latest/dist/jquery.fancybox.min.css'
+    }
+  },
+  isPhotoFigcaption: false,
+  islazyload: false,
+  isanchor: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = { 
+  isPost: true,
+  isHome: false,
+  isHighlightShrink: false,
+  isToc: true,
+  postUpdate: '2021-03-30 02:39:07'
+}</script><noscript><style type="text/css">
+  #nav {
+    opacity: 1
+  }
+  .justified-gallery img {
+    opacity: 1
+  }
+
+  #recent-posts time,
+  #post-meta time {
+    display: inline !important
+  }
+</style></noscript><script>(win=>{
+    win.saveToLocal = {
+      set: function setWithExpiry(key, value, ttl) {
+        if (ttl === 0) return
+        const now = new Date()
+        const expiryDay = ttl * 86400000
+        const item = {
+          value: value,
+          expiry: now.getTime() + expiryDay,
+        }
+        localStorage.setItem(key, JSON.stringify(item))
+      },
+
+      get: function getWithExpiry(key) {
+        const itemStr = localStorage.getItem(key)
+
+        if (!itemStr) {
+          return undefined
+        }
+        const item = JSON.parse(itemStr)
+        const now = new Date()
+
+        if (now.getTime() > item.expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return item.value
+      }
+    }
+  
+    win.getScript = url => new Promise((resolve, reject) => {
+      const script = document.createElement('script')
+      script.src = url
+      script.async = true
+      script.onerror = reject
+      script.onload = script.onreadystatechange = function() {
+        const loadState = this.readyState
+        if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+        script.onload = script.onreadystatechange = null
+        resolve()
+      }
+      document.head.appendChild(script)
+    })
+  
+      win.activateDarkMode = function () {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      win.activateLightMode = function () {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+      const t = saveToLocal.get('theme')
+    
+          if (t === 'dark') activateDarkMode()
+          else if (t === 'light') activateLightMode()
+        
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        if (asideStatus === 'hide') {
+          document.documentElement.classList.add('hide-aside')
+        } else {
+          document.documentElement.classList.remove('hide-aside')
+        }
+      }
+    })(window)</script><meta name="generator" content="Hexo 5.4.0"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="author-avatar"><img class="avatar-img" src="/img/Mantus.jpg" onerror="onerror=null;src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data"><div class="data-item is-center"><div class="data-item-link"><a href="/archives/"><div class="headline">文章</div><div class="length-num">12</div></a></div></div><div class="data-item is-center"><div class="data-item-link"><a href="/tags/"><div class="headline">标签</div><div class="length-num">12</div></a></div></div><div class="data-item is-center"><div class="data-item-link"><a href="/categories/"><div class="headline">分类</div><div class="length-num">2</div></a></div></div></div><hr/><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 主页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><i class="fa-fw fas fa-list"></i><span> 清单</span><i class="fas fa-chevron-down expand"></i></a><ul class="menus_item_child"><li><a class="site-page child" href="/music/"><i class="fa-fw fas fa-music"></i><span> 音乐</span></a></li><li><a class="site-page child" href="/books/"><i class="fa-fw fas fa-video"></i><span> 书籍</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url('/2019/04/01/Windows%E7%89%B9%E6%9D%83%E6%96%87%E4%BB%B6%E7%9A%84%E6%93%8D%E4%BD%9C%E6%BB%A5%E7%94%A8/cover.jpg')"><nav id="nav"><span id="blog_name"><a id="site-name" href="/">Linf3ng's Blog</a></span><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 主页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 归档</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="javascript:void(0);"><i class="fa-fw fas fa-list"></i><span> 清单</span><i class="fas fa-chevron-down expand"></i></a><ul class="menus_item_child"><li><a class="site-page child" href="/music/"><i class="fa-fw fas fa-music"></i><span> 音乐</span></a></li><li><a class="site-page child" href="/books/"><i class="fa-fw fas fa-video"></i><span> 书籍</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fas fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于</span></a></div></div><div id="toggle-menu"><a class="site-page"><i class="fas fa-bars fa-fw"></i></a></div></div></nav><div id="post-info"><h1 class="post-title">Windows特权文件的操作滥用</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2019-04-01T09:53:25.000Z" title="发表于 2019-04-01 17:53:25">2019-04-01</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2021-03-29T18:39:07.279Z" title="更新于 2021-03-30 02:39:07">2021-03-30</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E5%B9%B2%E8%B4%A7%E5%A4%8D%E8%AF%BB/">干货复读</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title="Windows特权文件的操作滥用"><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">阅读量:</span><span id="busuanzi_value_page_pv"></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="post-content" id="article-container"><p>这篇文章（稍微有点长）介绍如何利用Windows特权进程的文件操作实现本地权限提升（从用户级到管理员/系统级），并展示利用这类bug的技术、工具和详细步骤。</p>
+<span id="more"></span>
+
+<p>翻译自：<a href="">https://offsec.provadys.com/intro-to-file-operation-abuse-on-Windows.html</a></p>
+<h2 id="特权文件操作的Bug"><a href="#特权文件操作的Bug" class="headerlink" title="特权文件操作的Bug"></a>特权文件操作的Bug</h2><p>高权限进程对文件的操作过程和普通进程没啥区别。但是，当高权限进程访问没有足够保护的用户文件或目录时，就可能造成安全漏洞。因为我们有可能利用该特权进程执行一些本不该有的操作。有很多利用特权访问用户控制资源引起漏洞的案例，通过文件的方式只是其中之一。</p>
+<p>渗透师们熟知的方法有：用户修改某服务的预执行文件和DLL注入——如果我们能对某特权服务即将执行的文件做写操作，或者有它寻找DLL的目录的写权限，我们就能在这个特权进程里执行攻击代码，这是一个熟知的漏洞。对于最高权限进程，除了预防偶然性的配置错误外，再就是预防这一点了（但愿能做到）。</p>
+<p>但是，其他一些潜在的文件系统操作滥用似乎并不为人所知，它们同样危险：如果你能让一个特权进程创建、复制、移动或删除任意文件，那么高贵冷艳的<code>SYSTEM</code> shell也就离你不远了。</p>
+<p>另外，由于这些是逻辑漏洞，它们通常非常稳定（不涉及内存损坏），在代码重构后会依然存在（只要文件操作逻辑不变），并且不管处理器架构如何，利用方式完全相同。这些特征使它对攻击者很有价值。</p>
+<h2 id="寻找（部分）漏洞"><a href="#寻找（部分）漏洞" class="headerlink" title="寻找（部分）漏洞"></a>寻找（部分）漏洞</h2><h3 id="用户可写路径"><a href="#用户可写路径" class="headerlink" title="用户可写路径"></a>用户可写路径</h3><p>尽管大多数特权程序不会直接操作非特权用户的文件（有些例外：如杀软），但它们很多会操作一些用户能访问路径下的文件。非特权用户具有写权限的常见路径有：</p>
+<ul>
+<li>用户自己的文件和目录，包括其<code>AppData</code>和<code>Temp</code>目录，如果你够好运或开着杀软，某些特权进程可能会用到它们。</li>
+<li>公共用户的文件和目录：同上。</li>
+<li>使用默认ACL时，在<code>C:\</code>下创建的目录：默认情况下，在分区根目录下创建的目录，用户拥有写入权限。</li>
+<li>使用默认ACL时，<code>C:\ProgramData</code>的子目录：默认情况下，用户可以创建文件和目录，但不能修改现有的文件和目录。这也是通常第一个要看的地方。</li>
+<li><code>C:\Windows\Temp</code>的子目录：默认情况下，用户可以创建文件和目录，但不能修改现有文件和目录，也不能读取其他用户创建的文件或访问目录。可以在这里查看安装包和定时运行的其他特权软件或脚本，但无法查看已经存在的文件和目录。</li>
+</ul>
+<p>你可以使用工具和命令（例如SysInternals的<a target="_blank" rel="noopener" href="https://docs.microsoft.com/en-us/sysinternals/downloads/AccessChk">AccessChk</a>，<code>icacls</code>或PowerShell的<code>Get-Acl</code>）或资源管理器的“安全”选项卡来查看文件权限：“高级”选项里的“有效访问”选项卡，里面列出了特定用户或组关于当前文件或目录的访问权限（和AccessChk在命令行上运行的结果一样）。下图展示了Users组在<code>C:\ProgramData</code>目录上被授予的（默认）访问权限：</p>
+<p><img src="2.png"></p>
+<h3 id="寻找特权文件操作"><a href="#寻找特权文件操作" class="headerlink" title="寻找特权文件操作"></a>寻找特权文件操作</h3><p>要查找由特权进程执行文件操作的实例，我们可以简单地使用SysInternals的<a target="_blank" rel="noopener" href="https://docs.microsoft.com/en-us/sysinternals/downloads/procmon">ProcMon</a>，过滤掉不感兴趣的进程的文件活动。当它访问用户可控的文件和目录时，我们可以查看该进程是否使用了模拟功能（用了会在“详细信息”中显示）。有时它没有使用：</p>
+<p><img src="3.png"></p>
+<p>当然，它只能告诉我们进程自己执行的操作（例如，当它启动时）。想要更多信息，我们必须查看非特权用户执行的操作。如果它有UI则直接查看，或者间接通过COM、LPC、网络接口和其他暴露的攻击面查看。有时还要对产品做逆向处理（<a target="_blank" rel="noopener" href="https://googleprojectzero.blogspot.com/2018/04/windows-exploitation-tricks-exploiting.html">这篇</a>，<a target="_blank" rel="noopener" href="http://sandboxescaper.blogspot.com/2018/10/reversing-alpc-where-are-your-windows.html">这篇</a>，还有<a target="_blank" rel="noopener" href="https://www.atredis.com/blog/cve-2018-0952-privilege-escalation-vulnerability-in-windows-standard-collector-service">这篇</a>都是很棒的参考文章），而本文只讲一些简单技术。</p>
+<h2 id="利用技术和工具"><a href="#利用技术和工具" class="headerlink" title="利用技术和工具"></a>利用技术和工具</h2><p>一旦发现特权进程在用户的或用户可控制的文件和目录上执行了某些文件操作，我们可以劫持这些操作来做些有趣的事情。</p>
+<p>好消息是，<a target="_blank" rel="noopener" href="https://tyranidslair.blogspot.com/">James Forshaw</a>（<a target="_blank" rel="noopener" href="https://twitter.com/tiraniddo">@tiraniddo</a>）对NTFS系统和Windows组件做了许多开创性的研究，并将结果发布在了博客里。（快选导航：<a target="_blank" rel="noopener" href="https://googleprojectzero.blogspot.com/2015/08/windows-10hh-symbolic-link-mitigations.html">符号链接</a>，<a target="_blank" rel="noopener" href="https://googleprojectzero.blogspot.com/2015/12/between-rock-and-hard-link.html">硬链接</a>，<a target="_blank" rel="noopener" href="https://googleprojectzero.blogspot.com/2016/02/the-definitive-guide-on-win32-to-nt.html">NTPathConversion</a>，<a target="_blank" rel="noopener" href="https://googleprojectzero.blogspot.com/2017/08/windows-exploitation-tricks-arbitrary.html">DirCreate2FileRead</a>，<a target="_blank" rel="noopener" href="https://googleprojectzero.blogspot.com/2018/04/windows-exploitation-tricks-exploiting.html">FileWrite2EoP</a>，<a target="_blank" rel="noopener" href="https://googleprojectzero.blogspot.com/2019/03/windows-kernel-logic-bug-class-access.html">AccessModeMismatch</a>）并在<a target="_blank" rel="noopener" href="https://vimeo.com/133002251">Infiltrate</a>、<a target="_blank" rel="noopener" href="https://infocon.org/cons/SyScan/SyScan%202015%20Singapore/SyScan%202015%20Singapore%20presentations/SyScan15%20James%20Forshaw%20-%20A%20Link%20to%20the%20Past.pdf">SyScan</a>等会议上做了演讲。他提出了几种利用Windows文件系统和路径解析特性的技术（大致总结如下），并在开源的工具包<a target="_blank" rel="noopener" href="https://github.com/googleprojectzero/symboliclink-testing-tools">symboliclink-testing-tools</a>和<a target="_blank" rel="noopener" href="https://github.com/googleprojectzero/sandbox-attacksurface-analysis-tools/tree/master/NtApiDotNet">NtApiDotNet</a>库中实现了它们。他的技术和工具包为许多渗透人员（包括我）打开了寻找此类漏洞的大门。有了这些工具，利用过程变得简单，本地提权变得愈发容易。</p>
+<h3 id="NTFS交叉点"><a href="#NTFS交叉点" class="headerlink" title="NTFS交叉点"></a>NTFS交叉点</h3><p>NTFS的交叉点特性允许将目录设置成文件系统的挂载点，类似于Unix中的挂载点。它还可被设置解析到其他目录（两者在相同或不同的文件系统中）。这里可以把它看做一种仅限目录使用的符号链接。</p>
+<p><img src="4.png"></p>
+<p>有趣的是，在大多数情况下，路径将依照交叉点透明地进行解析（除非明确设置了参数来阻止这一情况）。因此按照上面的设置，某个程序在尝试打开<code>C:\Dir\file.txt</code>时实际上打开了<code>C:\Other\file.txt</code>，因为IO管理器也要跟踪交叉点。</p>
+<p>交叉点可以由非特权用户创建。它们都是跨卷工作，你也可以将<code>C:\Dir</code>“重定向”到<code>D:\OtherDir</code>中。如果拥有某现有目录的写权限并且它内容为空，就能将它转化成一个交叉点。</p>
+<p>NTFS交叉点通过重解析点实现，内置工具是不允许你这么做的。但我们可以设置自定义重解析点，从而让交叉点解析为任意路径。 <code>CreateMountPoint</code>工具（来自symboliclink-testing-tools）能够做到这点。对于常规交叉点，还可以用<code>mklink</code>或PowerShell的<code>New-Item</code>命令带上<code>-Type Junction</code>参数来实现。</p>
+<h3 id="硬链接"><a href="#硬链接" class="headerlink" title="硬链接"></a>硬链接</h3><p>与在Unix中一样，非特权用户也可以创建硬链接，作为现有文件的附加路径。但它不适用于目录或跨卷（对于硬链接来说意义不大）。</p>
+<p><img src="5.png"></p>
+<p>此外，内置工具不允许用户创建的硬链接指向没有写权限的文件，但实际上，系统调用却允许利用一个打开待读的文件来创建硬链接。使用symboliclink-testing-tools（或<a target="_blank" rel="noopener" href="https://twitter.com/FuzzySec">Ruben Boonen</a>编写的<a target="_blank" rel="noopener" href="https://github.com/FuzzySecurity/PowerShell-Suite/blob/master/Native-HardLink.ps1">PowerShell脚本</a>）中的<code>CreateHardLink</code>工具可以创建指向没有写权限的文件的硬链接。请注意，如果你没有该文件的写权限，就无法删除创建的硬链接（同理，你无法删除原始路径下的文件）。</p>
+<h3 id="对象管理器符号链接"><a href="#对象管理器符号链接" class="headerlink" title="对象管理器符号链接"></a>对象管理器符号链接</h3><p>虽然NTFS提供了文件系统符号链接，但在Windows上，非特权用户无法在文件系统上创建符号链接：它需要<a target="_blank" rel="noopener" href="https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/create-symbolic-links">SeCreateSymbolicLinkPrivilege</a>，默认情况下仅被授予管理员。</p>
+<p>但是，非特权用户可以在Windows的对象管理器中创建符号链接。顾名思义，对象管理器可以管理诸如进程、分区和文件之类的对象。对象管理器在驱动器号和与设备相关联的命名管道中使用符号链接。用户可以在可写对象目录（如<code>\RPC CONTROL\</code>）中创建对象符号链接，这些符号链接可以指向任意路径——包括文件系统中的路径（无论该路径存在与否）。</p>
+<p>当NTFS交叉点与对象符号链接组合时最为有趣。实际上，作为一个无特权用户，我们可以创建一个挂载点解析到<code>\RPC Control\</code>，该目录下包含一个对象管理器符号链接：</p>
+<p><img src="6.png"></p>
+<p>这样我们构造了一个像文件系统符号链接的东西：上图中，<code>C:\Dir\file.txt</code>被解析为<code>C:\Other\stuff.any</code>。这当然不是完全等同的，但在很多情况下，它足以利用程序了。</p>
+<p>可以使用<code>CreateMountPoint</code>和<code>CreateDosDeviceSymlink</code>分别执行这些步骤，但<code>CreateSymlink</code>工具一条命令就完成了以上步骤。</p>
+<h3 id="机会锁"><a href="#机会锁" class="headerlink" title="机会锁"></a>机会锁</h3><p>机会锁（简称oplock）是这样一种锁：它可以被放在文件上，当有其他进程识图访问该文件时上锁进程会收到通知——同时延缓这些进程的访问，以便上锁进程在开锁前将文件置于正确的状态。它的最初设计意图是缓存客户端——服务器用SMB协议通信的文件访问，可通过文件句柄调用特定的控制代码来在本地放置机会锁。</p>
+<p>这对利用<a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Time_of_check_to_time_of_use">TOCTOU</a>漏洞非常有用，因为你可以通过锁定一个进程识图打开的文件或目录而轻松赢得竞争。当然，这里面还有些限制：你无法让单独某个访问“通过”（因为一旦开锁所有被挂起的访问就会同时发生），并且无法通配所有类型的访问，但它依然是很有效的方法。</p>
+<p><code>SetOpLock</code>工具可以帮你创建锁并阻止其他进程对文件或目录的访问，直到按下Enter键来释放锁。它允许选择读锁、写锁或者独占型机会锁。</p>
+<p>James再次将这种技术与之前的技术相结合，创建了一个强大的原语来简化对某些TOCTOU漏洞的利用：通过设置伪符号链接（如前所述）并在最终文件（符号链接的目标）上放置一个机会锁，我们可以在打开目标文件时更改符号链接（即使目标文件被锁，符号链接却没被锁），使其指向另一个目标文件：</p>
+<p><img src="7.png"></p>
+<p>上图中，第一次访问文件<code>C:\Dir\file.txt</code>将打开<code>C:\One\foo.xxx</code>，第二次访问将打开<code>C:\Two\bar.yyy</code>。</p>
+<p><code>BaitAndSwitch</code>工具使用独占型机会锁实现此技术，如果你需要读、写锁，可以使用<code>SetOpLock</code>和<code>CreateSymlink</code>。</p>
+<h2 id="利用策略"><a href="#利用策略" class="headerlink" title="利用策略"></a>利用策略</h2><h3 id="经典栗子"><a href="#经典栗子" class="headerlink" title="经典栗子"></a>经典栗子</h3><p>假设产品X存在以下行为：</p>
+<ul>
+<li><p>在<code>C:\ProgramData\Product\Logs</code>中创建日志文件（对该目录的访问权限来自默认/继承）</p>
+</li>
+<li><p>日志文件由特权（系统）和非特权（用户）进程创建/写入</p>
+</li>
+<li><p>创建日志文件的过程设置了详细的ACL，允许每个人写入文件（并在需要时反转它）：</p>
+</li>
+</ul>
+<p><img src="8.png"></p>
+<p>这就造成了漏洞，可以用它创建任意内容的任意文件。</p>
+<p>如果删掉现有的日志文件，并将Logs目录转换为<code>C:\Windows\System32</code>的交叉点（由于从<code>C:\ProgramData</code>继承了访问权限），产品X的特权进程将在<code>System32</code>目录中创建它的日志：</p>
+<p><img src="9.png"></p>
+<p>还可以利用使用符号链接技术来转移特定的日志文件（例如<code>some.log</code>），这样攻击者就能创建自定义名称的文件。例如，在程序目录中创建一个DLL文件：</p>
+<p><img src="10.png"></p>
+<p>由于特权进程在日志文件上设置了开放的访问权限，因此我们能肆意更改文件的内容。</p>
+<p>多个产品上都出现过这个问题，大概因为它是一个常见需求的简单实现（所有组件都可写入日志文件——用户和系统组件、所有组件的通用日志写入代码块）。在过去的一年中，我们见到过以下了几起案例：</p>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://www.atredis.com/blog/cylance-privilege-escalation-vulnerability">Cylance</a> 作者：<a target="_blank" rel="noopener" href="https://twitter.com/ryHanson">Ryan Hanson</a></li>
+<li><a target="_blank" rel="noopener" href="https://labs.nettitude.com/blog/cve-2018-5240-symantec-management-agent-altiris-privilege-escalation/">Symantec / Altiris agent</a> 作者：<a target="_blank" rel="noopener" href="https://twitter.com/benpturner">Ben Turner</a></li>
+<li><a target="_blank" rel="noopener" href="https://offsec.provadys.com/mcafee-endpoint-security-arbitrary-file-write-eop.html">McAfee Endpoint Security</a> (已修补)</li>
+<li><a target="_blank" rel="noopener" href="https://labs.mwrinfosecurity.com/advisories/nvidia-geforce-experience-lpe/">NVIDIA GeForce Experience</a> 以及<a target="_blank" rel="noopener" href="https://labs.mwrinfosecurity.com/advisories/intel-driver-and-support-assistant-dsa-lpe/">Intel Driver &amp; Support Assistant</a> 作者：<a target="_blank" rel="noopener" href="https://twitter.com/incanus">Mark Barnes</a></li>
+<li><a target="_blank" rel="noopener" href="https://offsec.provadys.com/pulse-secure-arbitrary-file-write-eop.html">Pulse Secure VPN client</a> (未修补) (报告<a target="_blank" rel="noopener" href="https://www.themissinglink.com.au/security-advisories-cve-2018-11002">collision</a> 作者：<a target="_blank" rel="noopener" href="https://twitter.com/3xocyte">Matt Bush</a>)</li>
+</ul>
+<h3 id="从任意文件写入到权限提升"><a href="#从任意文件写入到权限提升" class="headerlink" title="从任意文件写入到权限提升"></a>从任意文件写入到权限提升</h3><p>当你能在任意文件写入时，要想在特权进程的上下文中执行代码，有两种首选技术：</p>
+<ul>
+<li>DLL劫持：在一个特权进程加载DLL文件的目录下创建DLL（比如在应用程序的目录中，在<code>System32</code>，<code>Windows</code>或其他的<code>SYSTEM</code>的<code>％PATH％</code>目录中）。这需要以某种方式（重新）启动该特权进程以加载有效的负载，以及一个在DLL劫持之前会被加载的目录。</li>
+<li>覆盖：替换现有的二进制、脚本、配置文件等来实现代码执行。除了要求（重新）启动进程外，还需要文件写入操作来覆盖现有文件（目标文件还不能被锁定），这种方法通常特定于指定的服务/应用程序。</li>
+</ul>
+<p><img src="11.png"></p>
+<p>至少有两种鲜为人知的技术：</p>
+<ul>
+<li>在一个32位的特权进程中使用<code>C:\Windows\System32\Wow64Log.dll</code>加载64位DLL。默认情况下，此DLL不存在（至少在买家版本上），并且会在所有32位进程中加载。但是，DLL不能（总是如此吗？）使用Kernel32导入，因此它只能使用NTDLL API，当然前提是你有一个（特权的）32位进程来注入（以及重启该进程的方法）。 AFAIK这个技巧是由<a target="_blank" rel="noopener" href="http://rce.co/knockin-on-heavens-gate-dynamic-processor-mode-switching/">George Nicolaou</a>（我能找到的第一个参考资料）发现的，并由<a target="_blank" rel="noopener" href="http://waleedassar.blogspot.com/2013/01/wow64logdll.html">Walied Assar</a>发表。</li>
+<li>使用“诊断中心标准收集器服务”：这个技术是由James Forshaw发现的，在<a target="_blank" rel="noopener" href="https://googleprojectzero.blogspot.com/2018/04/windows-exploitation-tricks-exploiting.html">GPZ博客</a>中做了解释，并在这个漏洞研究中用做<a target="_blank" rel="noopener" href="https://bugs.chromium.org/p/project-zero/issues/detail?id=1428#c9">示例利用代码</a>。这篇文章很值得一读，但如果你赶时间（还请把它添加到你的阅读列表中），文章要点是：诊断中心服务（以<code>SYSTEM</code>身份运行）会将<code>System32</code>中的任何扩展名文件当做DLL加载。因此，如果能在<code>System32</code>中创建一个包含攻击代码的<code>test.log</code>文件（当然，文件内容必须是一个能用的DLL），就能将该DLL加载到特权服务中。但是，这项技术在<a target="_blank" rel="noopener" href="https://twitter.com/x9090/status/1090860643429736448">Windows 10中被修补掉了</a>。</li>
+</ul>
+<p><img src="12.png"></p>
+<h3 id="控制内容"><a href="#控制内容" class="headerlink" title="控制内容"></a>控制内容</h3><p>这些技术都要求能控制所创建文件的内容：如果你能让文件被创建到任意位置，但无法控制其中的内容，那它的用途将非常有限。在之前的示例里，特权程序为生成的文件设置了一个宽松的ACL，如果没有这种宽松条件又该如何呢？</p>
+<p>此时可以关注一些别的操作。在日志记录案例中，假定应用在日志达到固定大小后轮换日志，其特权进程可能会移动或重命名日志文件（例如，<code>从abc.log</code>到<code>abc.old.log</code>）。我们可以用符号链接做以下操作：</p>
+<ul>
+<li>通过伪符号链接将被重命名/移动的源文件替换为我们的攻击负载（<code>sh.dll</code>）</li>
+<li>通过伪符号链接将目标文件替换为我们要创建或替换的文件（此处为<code>target.dll</code>）</li>
+</ul>
+<p>因此，当日志重命名发生时的情形如下：</p>
+<p><img src="13.png"></p>
+<p>当特权进程尝试将<code>abc.log</code>移动或重命名为<code>abc.old.log</code>时，它实际上会将用户拥有的<code>sh.dll</code>文件移动/重命名为<code>target.dll</code>，这样就将攻击负载放在了可执行的正确位置。</p>
+<p>所以，可控的特权文件的移动/重命名/复制操作也是非常有趣的原语：</p>
+<ul>
+<li>受控的移动或重命名操作允许我们写入任意文件</li>
+<li>同样适用于完全受控（源和目标）的副本</li>
+<li>源可控而目标不可控的复制操作允许我们读取任意文件（如果目标位置是用户可读的）</li>
+<li>源可控而目标不可控的移动/重命名操作允许我们任意删除文件</li>
+</ul>
+<p>附注：</p>
+<ul>
+<li>能否覆盖目标文件取决于执行操作的进程的选项</li>
+<li>如果目标文件已经存在，使用硬链接而不是伪符号链接同样奏效</li>
+<li>任意文件读取的常见利用方法是获取<code>SAM</code>，<code>SECURITY</code>和<code>SYSTEM</code>单元来转储SAM数据库和缓存凭据</li>
+</ul>
+<h3 id="从任意文件删除到权限提升"><a href="#从任意文件删除到权限提升" class="headerlink" title="从任意文件删除到权限提升"></a>从任意文件删除到权限提升</h3><p>已经探讨了如何从任意文件读写来提权，那删除又有什么用呢？除了明显的可以用来DoS，有时可以删除以下文件来提权：</p>
+<ul>
+<li>可写入的目录中的文件，即使存在于我们无法覆盖的现有目录，例如<code>C:\ProgramData</code></li>
+<li>稍后将会被特权进程（不管它是否为执行任意文件删除的进程）读取或写入</li>
+</ul>
+<p>例如，如果有办法让进程将<code>C:\ProgramData\Product\foo</code>移动/重命名为<code>C:\ProgramData\Product\bar</code>，但这俩文件已经存在且没有写入权限，我们可以使用任意文件删除漏洞来删除foo和bar，并自己重新创建它们（再次假设<code>Product</code>的子目录采取了默认权限）。接着用之前的技术来借助写操作（如果<code>Product</code>目录目前为空则用伪符号链接，其他情况用硬链接）完成攻击链。</p>
+<h2 id="利用杀毒软件"><a href="#利用杀毒软件" class="headerlink" title="利用杀毒软件"></a>利用杀毒软件</h2><p>AV软件是此类漏洞攻击的主要目标，因为它们有高权限，而且出于设计必须操纵文件（包括用户拥有的文件）。特权进程执行扫描、删除、恢复操作都可能被劫持而执行一些有趣的文件操作，这就将防御组件变成了潜在的威胁（当然，这只是增加了AV攻击面的高度，任何人在部署AV前都应该仔细权衡它的风险—收益比）。</p>
+<h3 id="杀软隔离和恢复"><a href="#杀软隔离和恢复" class="headerlink" title="杀软隔离和恢复"></a>杀软隔离和恢复</h3><p>隔离和恢复功能可以有妙用，特别是当它们可以由非特权用户触发时（有时不通过UI，而是利用<a target="_blank" rel="noopener" href="https://blog.silentsignal.eu/2018/01/08/bare-knuckled-antivirus-breaking/">COM劫持</a>实现）。触发隔离（或删除）功能的最简单方法当然是将已知的恶意文件（如EICAR）放到文件系统上。</p>
+<p>有趣的是，有些AV会在删除之前对检测到的文件执行特权操作，例如：</p>
+<ul>
+<li>在同一目录中创建/删除临时文件</li>
+<li>在用户可写的目录中复制或移动被感染的文件</li>
+<li>将被感染的文件复制或移动到用户可读的隔离位置（如果要利用这点，请注意不要拿你的<code>SAM</code>文件做实验）</li>
+</ul>
+<p>临时和隔离文件有时会被编码且/或被填充，如果你想查看算法（或者读取生成的文件），除了打开IDA/Ghidra，还可以把它扔到<a target="_blank" rel="noopener" href="http://hexacorn.com/">Hexacorn</a>的<a target="_blank" rel="noopener" href="http://hexacorn.com/d/DeXRAY.pl">DeXRAY</a>里检查一番。</p>
+<p>如果非特权用户可以触发恢复操作，就会是另一个特权文件写入漏洞的<a target="_blank" rel="noopener" href="https://bogner.sh/2017/11/avgater-getting-local-admin-by-abusing-the-anti-virus-quarantine/">实例</a>。若想控制内容，要么在删除或恢复过程中查找潜在的TOCTOU，要么使攻击载荷足够“恶意”从而一出现就被隔离。</p>
+<h3 id="转移文件删除-隔离"><a href="#转移文件删除-隔离" class="headerlink" title="转移文件删除/隔离"></a>转移文件删除/隔离</h3><p>有个好玩的姿势是：如果AV从检测到恶意文件到删除/隔离（或以其他方式阻止访问）的过程没有上锁（TOCTOU）。我们可以在文件被删除之前用交叉点替换其所在的父目录。如果想删除一些无权访问的文件（例如，<code>C:\Windows\System32\license.rtf</code>），可以这样做：</p>
+<ul>
+<li>在我们创建的目录中放置一个与目标文件相同名称的EICAR（或者其他会被AV检测到的文件），例如<code>C:\Temp\Test\licence.rtf</code></li>
+<li>等待AV检测到它</li>
+<li>删除或重命名父目录<code>C:\Temp\Test</code></li>
+<li>将其替换为<code>C:\Windows\System32</code>的交叉点</li>
+<li>AV删除<code>C:\Temp\Test\licence.rtf</code>会被解析为<code>C:\Windows\System32\licence.rtf</code></li>
+</ul>
+<p>最恰当的方法是使用机会锁，但现实中也没那么简单，因为文件在被删除之前可以被访问（可变）多次，缺乏细粒度的控制让这一点变得很棘手。一种简单粗暴的的方法是简单地在目录旁创建交叉点，并写一个循环来不停交换两者。由于AV寻找路径和删除文件方式的不同，我们可能有机会删除掉交叉点，必要时可以重复这一操作。 （剧透：在几款AV产品下管用了，但其他产品没有。）</p>
+<p>显然，以上方法不太隐蔽，但是如果没有配置合适的事件转发服务，你要找的第一个文件可能还是事件日志 :)</p>
+<h2 id="已知漏洞"><a href="#已知漏洞" class="headerlink" title="已知漏洞"></a>已知漏洞</h2><p>去年年初我们在常见的软件产品中发现了几个这样的漏洞，并报告给了向各自的供应商，其中一些已经发布了补丁。下表总结了发现的漏洞及当前状态：</p>
+<p><img src="14.png"></p>
+<p>部分漏洞详情：</p>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://offsec.provadys.com/pulse-secure-arbitrary-file-write-eop.html">Pulse Secure VPN client</a></li>
+<li><a target="_blank" rel="noopener" href="https://offsec.provadys.com/mcafee-endpoint-security-arbitrary-file-write-eop.html">McAfee Endpoint Security</a></li>
+<li><a target="_blank" rel="noopener" href="https://offsec.provadys.com/fsecure-safe-arbitrary-file-copy-eop.html">F-Secure SAFE</a></li>
+</ul>
+<h2 id="结论"><a href="#结论" class="headerlink" title="结论"></a>结论</h2><p>我希望本文能够让一些新人开始寻找与文件相关的逻辑提权漏洞，另外，供应商和开发人员也能针对此类漏洞加强/修复他们的产品。</p>
+<p>感谢James Forshaw为我们展示了这高超的技术，感谢那些反馈及时的供应商（特别是F-Secure安全团队），感谢<a target="_blank" rel="noopener" href="https://grehack.fr/">Grehack</a>和<a target="_blank" rel="noopener" href="https://www.troopers.de/">TROOPERS</a>允许我在会议上公开它。感谢我的同事，是他们帮我准备了演说和本文。</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta">文章作者: </span><span class="post-copyright-info"><a href="mailto:undefined">L1f3ng</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta">文章链接: </span><span class="post-copyright-info"><a href="http://example.com/2019/04/01/Windows%E7%89%B9%E6%9D%83%E6%96%87%E4%BB%B6%E7%9A%84%E6%93%8D%E4%BD%9C%E6%BB%A5%E7%94%A8/">http://example.com/2019/04/01/Windows%E7%89%B9%E6%9D%83%E6%96%87%E4%BB%B6%E7%9A%84%E6%93%8D%E4%BD%9C%E6%BB%A5%E7%94%A8/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta">版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来自 <a href="http://example.com" target="_blank">Linf3ng's Blog</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/%E6%9C%AC%E5%9C%B0%E6%8F%90%E6%9D%83/">本地提权</a><a class="post-meta__tags" href="/tags/Windows/">Windows</a></div><div class="post_share"><div class="social-share" data-image="/2019/04/01/Windows%E7%89%B9%E6%9D%83%E6%96%87%E4%BB%B6%E7%9A%84%E6%93%8D%E4%BD%9C%E6%BB%A5%E7%94%A8/cover.jpg" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/social-share.js/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/social-share.js/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><div class="prev-post pull-left"><a href="/2019/04/17/POSCMSv3-2-0%E6%BC%8F%E6%B4%9E%E5%A5%97%E9%A4%90%E5%A4%8D%E7%8E%B0/"><img class="prev-cover" src="/2019/04/17/POSCMSv3-2-0%E6%BC%8F%E6%B4%9E%E5%A5%97%E9%A4%90%E5%A4%8D%E7%8E%B0/cover.png" onerror="onerror=null;src='/img/404.jpg'" alt="cover of previous post"><div class="pagination-info"><div class="label">上一篇</div><div class="prev_info">POSCMSv3.2.0漏洞套餐复现</div></div></a></div><div class="next-post pull-right"><a href="/2019/03/27/Java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E8%A7%A3%E6%9E%90/"><img class="next-cover" src="/2019/03/27/Java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E%E8%A7%A3%E6%9E%90/cover.jpeg" onerror="onerror=null;src='/img/404.jpg'" alt="cover of next post"><div class="pagination-info"><div class="label">下一篇</div><div class="next_info">Java反序列化漏洞解析</div></div></a></div></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info"><div class="card-info-avatar is-center"><img class="avatar-img" src="/img/Mantus.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/><div class="author-info__name">L1f3ng</div><div class="author-info__description">站在更高的角度看安全</div></div><div class="card-info-data"><div class="card-info-data-item is-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">12</div></a></div><div class="card-info-data-item is-center"><a href="/tags/"><div class="headline">标签</div><div class="length-num">12</div></a></div><div class="card-info-data-item is-center"><a href="/categories/"><div class="headline">分类</div><div class="length-num">2</div></a></div></div><a class="button--animated" id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/xxxxxx"><i class="fab fa-github"></i><span>Follow Me</span></a><div class="card-info-social-icons is-center"><a class="social-icon" href="https://github.com/l1nf3ng" target="_blank" title="Github"><i class="fab fa-github"></i></a><a class="social-icon" href="mailto:nuaa_llf@126.com" target="_blank" title="Email"><i class="fas fa-envelope"></i></a></div></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn card-announcement-animation"></i><span>公告</span></div><div class="announcement_content">2021年，继续营业!</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%89%B9%E6%9D%83%E6%96%87%E4%BB%B6%E6%93%8D%E4%BD%9C%E7%9A%84Bug"><span class="toc-number">1.</span> <span class="toc-text">特权文件操作的Bug</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AF%BB%E6%89%BE%EF%BC%88%E9%83%A8%E5%88%86%EF%BC%89%E6%BC%8F%E6%B4%9E"><span class="toc-number">2.</span> <span class="toc-text">寻找（部分）漏洞</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%94%A8%E6%88%B7%E5%8F%AF%E5%86%99%E8%B7%AF%E5%BE%84"><span class="toc-number">2.1.</span> <span class="toc-text">用户可写路径</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AF%BB%E6%89%BE%E7%89%B9%E6%9D%83%E6%96%87%E4%BB%B6%E6%93%8D%E4%BD%9C"><span class="toc-number">2.2.</span> <span class="toc-text">寻找特权文件操作</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%88%A9%E7%94%A8%E6%8A%80%E6%9C%AF%E5%92%8C%E5%B7%A5%E5%85%B7"><span class="toc-number">3.</span> <span class="toc-text">利用技术和工具</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#NTFS%E4%BA%A4%E5%8F%89%E7%82%B9"><span class="toc-number">3.1.</span> <span class="toc-text">NTFS交叉点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%A1%AC%E9%93%BE%E6%8E%A5"><span class="toc-number">3.2.</span> <span class="toc-text">硬链接</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AF%B9%E8%B1%A1%E7%AE%A1%E7%90%86%E5%99%A8%E7%AC%A6%E5%8F%B7%E9%93%BE%E6%8E%A5"><span class="toc-number">3.3.</span> <span class="toc-text">对象管理器符号链接</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9C%BA%E4%BC%9A%E9%94%81"><span class="toc-number">3.4.</span> <span class="toc-text">机会锁</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%88%A9%E7%94%A8%E7%AD%96%E7%95%A5"><span class="toc-number">4.</span> <span class="toc-text">利用策略</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BB%8F%E5%85%B8%E6%A0%97%E5%AD%90"><span class="toc-number">4.1.</span> <span class="toc-text">经典栗子</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BB%8E%E4%BB%BB%E6%84%8F%E6%96%87%E4%BB%B6%E5%86%99%E5%85%A5%E5%88%B0%E6%9D%83%E9%99%90%E6%8F%90%E5%8D%87"><span class="toc-number">4.2.</span> <span class="toc-text">从任意文件写入到权限提升</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%8E%A7%E5%88%B6%E5%86%85%E5%AE%B9"><span class="toc-number">4.3.</span> <span class="toc-text">控制内容</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BB%8E%E4%BB%BB%E6%84%8F%E6%96%87%E4%BB%B6%E5%88%A0%E9%99%A4%E5%88%B0%E6%9D%83%E9%99%90%E6%8F%90%E5%8D%87"><span class="toc-number">4.4.</span> <span class="toc-text">从任意文件删除到权限提升</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%88%A9%E7%94%A8%E6%9D%80%E6%AF%92%E8%BD%AF%E4%BB%B6"><span class="toc-number">5.</span> <span class="toc-text">利用杀毒软件</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9D%80%E8%BD%AF%E9%9A%94%E7%A6%BB%E5%92%8C%E6%81%A2%E5%A4%8D"><span class="toc-number">5.1.</span> <span class="toc-text">杀软隔离和恢复</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%BD%AC%E7%A7%BB%E6%96%87%E4%BB%B6%E5%88%A0%E9%99%A4-%E9%9A%94%E7%A6%BB"><span class="toc-number">5.2.</span> <span class="toc-text">转移文件删除&#x2F;隔离</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%B7%B2%E7%9F%A5%E6%BC%8F%E6%B4%9E"><span class="toc-number">6.</span> <span class="toc-text">已知漏洞</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%BB%93%E8%AE%BA"><span class="toc-number">7.</span> <span class="toc-text">结论</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item"><a class="thumbnail" href="/2019/11/19/Ysoserial%E5%B7%A5%E5%85%B7%E8%A7%A3%E8%AF%BB%EF%BC%88%E5%85%AD%EF%BC%89/" title="Ysoserial工具解读（六）"><img src="/2019/11/19/Ysoserial%E5%B7%A5%E5%85%B7%E8%A7%A3%E8%AF%BB%EF%BC%88%E5%85%AD%EF%BC%89/java_cover.png" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Ysoserial工具解读（六）"/></a><div class="content"><a class="title" href="/2019/11/19/Ysoserial%E5%B7%A5%E5%85%B7%E8%A7%A3%E8%AF%BB%EF%BC%88%E5%85%AD%EF%BC%89/" title="Ysoserial工具解读（六）">Ysoserial工具解读（六）</a><time datetime="2019-11-19T06:45:24.000Z" title="发表于 2019-11-19 14:45:24">2019-11-19</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2019/11/05/Ysoserial%E5%B7%A5%E5%85%B7%E8%A7%A3%E8%AF%BB%EF%BC%88%E4%BA%94%EF%BC%89/" title="Ysoserial工具解读（五）"><img src="/2019/11/05/Ysoserial%E5%B7%A5%E5%85%B7%E8%A7%A3%E8%AF%BB%EF%BC%88%E4%BA%94%EF%BC%89/java_cover.png" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Ysoserial工具解读（五）"/></a><div class="content"><a class="title" href="/2019/11/05/Ysoserial%E5%B7%A5%E5%85%B7%E8%A7%A3%E8%AF%BB%EF%BC%88%E4%BA%94%EF%BC%89/" title="Ysoserial工具解读（五）">Ysoserial工具解读（五）</a><time datetime="2019-11-05T02:39:59.000Z" title="发表于 2019-11-05 10:39:59">2019-11-05</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2019/10/31/Ysoserial%E5%B7%A5%E5%85%B7%E8%A7%A3%E8%AF%BB%EF%BC%88%E5%9B%9B%EF%BC%89/" title="Ysoserial工具解读（四）"><img src="/2019/10/31/Ysoserial%E5%B7%A5%E5%85%B7%E8%A7%A3%E8%AF%BB%EF%BC%88%E5%9B%9B%EF%BC%89/java_cover.png" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Ysoserial工具解读（四）"/></a><div class="content"><a class="title" href="/2019/10/31/Ysoserial%E5%B7%A5%E5%85%B7%E8%A7%A3%E8%AF%BB%EF%BC%88%E5%9B%9B%EF%BC%89/" title="Ysoserial工具解读（四）">Ysoserial工具解读（四）</a><time datetime="2019-10-31T11:55:49.000Z" title="发表于 2019-10-31 19:55:49">2019-10-31</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2019/10/31/Ysoserial%E5%B7%A5%E5%85%B7%E8%A7%A3%E8%AF%BB%EF%BC%88%E4%B8%89%EF%BC%89/" title="Ysoserial工具解读（三）"><img src="/2019/10/31/Ysoserial%E5%B7%A5%E5%85%B7%E8%A7%A3%E8%AF%BB%EF%BC%88%E4%B8%89%EF%BC%89/java_cover.png" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Ysoserial工具解读（三）"/></a><div class="content"><a class="title" href="/2019/10/31/Ysoserial%E5%B7%A5%E5%85%B7%E8%A7%A3%E8%AF%BB%EF%BC%88%E4%B8%89%EF%BC%89/" title="Ysoserial工具解读（三）">Ysoserial工具解读（三）</a><time datetime="2019-10-31T03:21:05.000Z" title="发表于 2019-10-31 11:21:05">2019-10-31</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2019/10/30/Ysoserial%E5%B7%A5%E5%85%B7%E8%A7%A3%E8%AF%BB%EF%BC%88%E4%BA%8C%EF%BC%89/" title="Ysoserial工具解读（二）"><img src="/2019/10/30/Ysoserial%E5%B7%A5%E5%85%B7%E8%A7%A3%E8%AF%BB%EF%BC%88%E4%BA%8C%EF%BC%89/java_cover.png" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="Ysoserial工具解读（二）"/></a><div class="content"><a class="title" href="/2019/10/30/Ysoserial%E5%B7%A5%E5%85%B7%E8%A7%A3%E8%AF%BB%EF%BC%88%E4%BA%8C%EF%BC%89/" title="Ysoserial工具解读（二）">Ysoserial工具解读（二）</a><time datetime="2019-10-30T01:19:33.000Z" title="发表于 2019-10-30 09:19:33">2019-10-30</time></div></div></div></div></div></div></main><footer id="footer"><div id="footer-wrap"><div class="copyright">&copy;2019 - 2021 By L1f3ng</div><div class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly</a></div><div class="footer_custom_text">Hi, welcome to new land!</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="浅色和深色模式转换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside_config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>
