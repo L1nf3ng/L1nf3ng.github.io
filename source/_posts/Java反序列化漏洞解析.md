@@ -178,30 +178,32 @@ public void cmd_exec()throws Exception{
 
 ## 利用思路
 
-java的反序列化漏洞利用思路是**构造一个恶意的类，其readObject方法被覆盖过。这样在它经过序列化被发送到服务端后，服务器上的JVM在做反序列化时（即调用readObject方法）就会执行我们想要的操作。**
+java的反序列化漏洞利用思路是**构造一个恶意的类，其`readObject()`方法重写过且有被控制的点（前提是该类及所依赖的类均存在于服务器JVM的Classpath中）。我们将它序列化后的数据发送给服务端，就会触发后者执行我们预定的操作。**
 
-问题的关键在于服务端与客户端的classpath不同，如果我们构造的java类在服务端不存在，它将不会被正确解析，也就不会执行我们想要的操作。因此，我们只好从服务端常见的classpath下的jar包里寻找可能。
+问题的关键在于服务端与客户端的classpath不同，如果我们构造的java类在服务端不存在，它将不会被正确解析。因此，我们必须从服务端常见的classpath下的类中寻找可能。
 
 ### 寻找攻击点
 
 在实际的应用环境中，序列化对象通常出现在以下情景：
 
-1. HTTP请求中的参数，cookies以及Parameters。
+1. HTTP请求中的参数，cookies以及HTTP Parameters。
 2. RMI协议，被广泛使用的RMI协议完全基于序列化。
 3. JMX ，同样用于处理序列化对象。
-4. 自定义协议， 用来接收与发送原始的java对象。
+4. 自定义协议，如`dubbo`，用来接收与发送原始的java对象。
 
 这些点都是黑盒环境下最应该注意的点。
 
 ### 构造Payload
 
-在发现可能的攻击点后就需要构造payload了，如之前所说，我们需要寻找这样一个类（%__%有些事后诸葛亮）
+在发现可能的攻击点后就需要构造payload了，如之前所说，它的**利用条件**如下：
 
 >1. 存在于服务端classpath目录下
->2. 该类的readObject方法被重载过，且该方法里存在可控制点
+>2. 该类的readObject方法被重载过，且该方法里存在可控制的点
 >3. 利用反射机制强行修改该类实例的属性，使得恶意代码被注入
 
-满足上述条件的类最常见的有两个，`sun.reflect.annotation.AnnotationInvocationHandler`和`javax.management.BadAttributeValueExpException`这两个类都伴随JDK一起安装，但第一个类在openjdk 8u60之后不再适用，所以这里主要分析第二个类。
+比如：`ysoserial`中用到的`sun.reflect.annotation.AnnotationInvocationHandler`类，它是`InvocationHandler`接口的实现类，内置于JDK的运行时环境中，而且它的成员变量`map`可被我们用反射技术特殊构造，该类在openjdk 8u60之后不再适用！！！
+
+另一个被用到的类是`javax.management.BadAttributeValueExpException`，本文主要分析第二个类。
 
 #### 第一环节
 
@@ -284,7 +286,7 @@ field.setAccessible(true);
 field.set(ve, entry);
 ```
 
-就像这样，当BadAttributeValueExpException的这个实例在做反序列化时，就会进入第二个else if，从而调用`TiedMapEntry.toString() --> TiedMapEntry.getValue() --> LazyMap.get(non-exist-key) --> Transformer.transform()`，酱紫我们串起了第一个环节。
+就像这样，当BadAttributeValueExpException的这个实例在做反序列化时，由于很多java程序默认不会设置`SecurityManager`，所以会进入第二个else if，从而调用`TiedMapEntry.toString() --> TiedMapEntry.getValue() --> LazyMap.get(non-exist-key) --> Transformer.transform()`，酱紫我们串起了调用链的前半环。
 
 #### 第二环节
 
